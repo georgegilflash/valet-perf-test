@@ -1,0 +1,18 @@
+# Environment files (sensitive credentials)
+.env
+.env.local
+.env.*.local
+
+# Test outputs and reports
+reports/
+*.log
+
+# Node dependencies (if any)
+node_modules/
+package-lock.json
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,25 @@
+{
+  "name": "api-k6-performance-test",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "5-stage ramp-up performance testing suite using Grafana k6",
+  "scripts": {
+    "tokens": "node ./scripts/generate-tokens.js",
+    "tokens:ps": "powershell -ExecutionPolicy Bypass -File ./scripts/generate-tokens.ps1",
+    "test": "powershell -ExecutionPolicy Bypass -File ./scripts/run.ps1",
+    "test:debug": "powershell -ExecutionPolicy Bypass -File ./scripts/run.ps1 -AdditionalArgs \"-e DEBUG_RESPONSE=true\"",
+    "test:soap": "powershell -ExecutionPolicy Bypass -Command \"k6 run -e TEST_TYPE=SOAP main.js\"",
+    "test:bash": "bash ./scripts/run.sh",
+    "test:direct": "k6 run main.js",
+    "test:quick": "k6 run -e STAGE_1_DURATION=10s -e STAGE_1_TARGET=5 -e STAGE_2_DURATION=10s -e STAGE_2_TARGET=10 -e STAGE_3_DURATION=10s -e STAGE_3_TARGET=15 -e STAGE_4_DURATION=10s -e STAGE_4_TARGET=15 -e STAGE_5_DURATION=10s -e STAGE_5_TARGET=0 main.js"
+  },
+  "keywords": [
+    "k6",
+    "performance-testing",
+    "load-testing",
+    "api-testing",
+    "stress-testing"
+  ],
+  "author": "",
+  "license": "ISC"
+}
