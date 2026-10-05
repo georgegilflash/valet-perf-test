@@ -10,7 +10,7 @@
 
 param (
     [string]$Script = "main.js",
-    [string]$EnvFile = ".env",
+    [string]$EnvFile = "C:\Program Files\.env",
     [string]$AdditionalArgs = ""
 )
 
@@ -38,7 +38,13 @@ $envArgs = @()
 # If .env file exists, read it line by line
 if (Test-Path $EnvFile) {
     Write-Host "Loading environment from $EnvFile..." -ForegroundColor Green
-    Get-Content $EnvFile | ForEach-Object {
+    $lines = @()
+    try {
+        $lines = Get-Content $EnvFile -ErrorAction Stop
+    } catch {
+        $lines = cmd.exe /c "type `"$EnvFile`""
+    }
+    $lines | ForEach-Object {
         $line = $_.Trim()
         # Skip empty lines and comments
         if ($line -and -not $line.StartsWith("#")) {

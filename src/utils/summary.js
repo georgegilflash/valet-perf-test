@@ -36,10 +36,24 @@ function formatDuration(ms) {
   return `${ms.toFixed(2)}ms`;
 }
 
+function getServiceEndpoint(safeName) {
+  const map = {
+    kiosk: '/device/kiosk.asmx',
+    valet: '/device/valet.asmx',
+    pms: '/device/pms.asmx',
+    sign: '/device/sign.asmx',
+    payments: '/device/payments.asmx',
+    polling: '/device/(pms, sign, payments).asmx',
+    device: '/device/services',
+  };
+  return map[safeName] || (config.testType === 'SOAP' ? config.soap.endpoint : '');
+}
+
 /**
  * Generates an HTML dashboard report
  */
-function generateHtmlReport(data, metricsData, checksList) {
+function generateHtmlReport(data, metricsData, checksList, suiteName = 'valet') {
+  const displayTitle = suiteName.toUpperCase().replace(/[-_]/g, ' ');
   const statusColor = metricsData.errorRateNum === 0 ? '#10b981' : '#ef4444';
   const statusBadge = metricsData.errorRateNum === 0 ? 'PASSED' : 'ATTENTION NEEDED';
 
@@ -63,7 +77,7 @@ function generateHtmlReport(data, metricsData, checksList) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>k6 Performance Test Report</title>
+  <title>k6 ${displayTitle} Report</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
     .container { max-width: 960px; margin: 0 auto; }
@@ -86,8 +100,8 @@ function generateHtmlReport(data, metricsData, checksList) {
   <div class="container">
     <div class="header">
       <div>
-        <div class="title">k6 Performance Test Execution Report</div>
-        <div class="subtitle">Target: ${config.baseUrl}${config.soap.endpoint} | Mode: ${config.testType} | Generated: ${new Date().toLocaleString()}</div>
+        <div class="title">${displayTitle} Performance Test Report</div>
+        <div class="subtitle">Target: ${config.baseUrl}${getServiceEndpoint(suiteName)} | Mode: ${config.testType} | Generated: ${new Date().toLocaleString()}</div>
       </div>
       <div class="badge">${statusBadge}</div>
     </div>
@@ -144,9 +158,18 @@ function generateHtmlReport(data, metricsData, checksList) {
 }
 
 /**
- * Custom summary generator for k6 test runs
+ * Custom summary generator for k6 test runs with per-suite report names
  */
-export function generateSummary(data) {
+export function generateSummary(data, defaultSuiteName = 'valet') {
+  const envReportName = (__ENV && __ENV.REPORT_NAME) ? __ENV.REPORT_NAME : null;
+  const suiteName = (envReportName || defaultSuiteName || 'valet').toLowerCase();
+  const safeName = suiteName.replace(/[^a-z0-9_-]/g, '-');
+  const displayTitle = safeName.toUpperCase().replace(/[-_]/g, ' ');
+
+  const htmlPath = `reports/report-${safeName}.html`;
+  const jsonPath = `reports/summary-${safeName}.json`;
+  const mdPath = `reports/summary-${safeName}.md`;
+
   const m = data.metrics;
 
   const totalReqs = m.http_reqs ? m.http_reqs.values.count : 0;
@@ -205,10 +228,10 @@ export function generateSummary(data) {
   // Terminal Console Summary (stdout)
   const stdout = `
 ================================================================================
-                    K6 PERFORMANCE TEST EXECUTION REPORT
+              K6 ${displayTitle} PERFORMANCE TEST REPORT
 ================================================================================
-Target URL:         ${config.baseUrl}${config.testType === 'SOAP' ? config.soap.endpoint : ''}
-Protocol / Mode:    ${config.testType}
+Target URL:         ${config.baseUrl}${getServiceEndpoint(safeName)}
+Suite / Mode:       ${displayTitle} (${config.testType})
 Execution Time:     ${new Date().toISOString()}
 --------------------------------------------------------------------------------
 REQUEST SUMMARY:
@@ -234,17 +257,19 @@ DATA TRANSFER:
   Total Sent:       ${formatBytes(dataSent)}
   Total Received:   ${formatBytes(dataReceived)}
 ================================================================================
-HTML Dashboard Report generated: reports/report.html
-Full JSON Data generated:        reports/summary.json
+HTML Dashboard Report generated: ${htmlPath}
+Full JSON Data generated:        ${jsonPath}
+Markdown Summary generated:      ${mdPath}
 ================================================================================
 `;
 
-  const html = generateHtmlReport(data, metricsData, checksList);
+  const html = generateHtmlReport(data, metricsData, checksList, safeName);
 
-  const markdown = `# Performance Test Summary Report
+  const markdown = `# ${displayTitle} Performance Test Summary Report
 
 - **Date:** ${new Date().toISOString()}
-- **Target:** \`${config.baseUrl}${config.testType === 'SOAP' ? config.soap.endpoint : ''}\`
+- **Target:** \`${config.baseUrl}${getServiceEndpoint(safeName)}\`
+- **Suite:** \`${displayTitle}\`
 - **Protocol:** \`${config.testType}\`
 - **Total Requests:** ${totalReqs}
 - **Successful:** ${successReqs}
@@ -257,10 +282,19 @@ Full JSON Data generated:        reports/summary.json
 ${checksList.map((c) => `- [${c.fails === 0 ? 'x' : ' '}] **${c.name}**: ${c.passes} passed, ${c.fails} failed`).join('\n')}
 `;
 
-  return {
+  const result = {
     stdout: stdout,
-    'reports/report.html': html,
-    'reports/summary.json': JSON.stringify(data, null, 2),
-    'reports/summary.md': markdown,
   };
+
+  result[htmlPath] = html;
+  result[jsonPath] = JSON.stringify(data, null, 2);
+  result[mdPath] = markdown;
+
+  // Provide reports/report.html for backward compatibility if default or valet
+  if (safeName === 'valet' || safeName === 'default') {
+    result['reports/report.html'] = html;
+    result['reports/summary.json'] = JSON.stringify(data, null, 2);
+  }
+
+  return result;
 }

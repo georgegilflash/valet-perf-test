@@ -80,4 +80,17 @@ export const config = {
 
   // Request timeout (must exceed pollSeconds, e.g. 90s for a 60s poll)
   timeout: __ENV.REQUEST_TIMEOUT || '90s',
+
+  // Device Services Suite (Kiosk, PMS, Sign)
+  deviceSuite: {
+    enableKioskPing: (__ENV.ENABLE_KIOSK_PING || 'true').toLowerCase() === 'true',
+    enableKioskGetServerName: (__ENV.ENABLE_KIOSK_GET_SERVER_NAME || 'false').toLowerCase() === 'true',
+    enableValetGetServerName: (__ENV.ENABLE_VALET_GET_SERVER_NAME || 'true').toLowerCase() === 'true',
+    enablePmsNewMessages: (__ENV.ENABLE_PMS_NEW_MESSAGES || 'false').toLowerCase() === 'true',
+    enableSignNewMessages: (__ENV.ENABLE_SIGN_NEW_MESSAGES || 'false').toLowerCase() === 'true',
+    enablePaymentsNewMessages: (__ENV.ENABLE_PAYMENTS_NEW_MESSAGES || 'false').toLowerCase() === 'true',
+    kioskId: __ENV.KIOSK_ID || '00000000-0000-0000-0000-000000000000',
+    companyLocationId: __ENV.COMPANY_LOCATION_ID || '00000000-0000-0000-0000-000000000000',
+    companyLocationMonitorId: __ENV.COMPANY_LOCATION_MONITOR_ID || '00000000-0000-0000-0000-000000000000',
+  },
 };

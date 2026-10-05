@@ -1,0 +1,71 @@
+<#
+.SYNOPSIS
+    Runs the Device Services performance test suite (Kiosk Ping, GetServerName, PMS, Sign)
+.DESCRIPTION
+    Loads key=value pairs from the .env file and executes k6 with main-device.js.
+.EXAMPLE
+    .\scripts\run-device.ps1
+    .\scripts\run-device.ps1 -AdditionalArgs "-e DEBUG_RESPONSE=true"
+#>
+
+param (
+    [string]$Script = "main-device.js",
+    [string]$EnvFile = "C:\Program Files\.env",
+    [string]$AdditionalArgs = ""
+)
+
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "   k6 Device Services Suite Runner (Kiosk / PMS / Sign)     " -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+
+# Check if k6 is installed
+$k6Cmd = Get-Command k6 -ErrorAction SilentlyContinue
+if (-not $k6Cmd) {
+    Write-Error "k6 is not found in PATH. Please install k6 first."
+    Write-Host "Install options on Windows:" -ForegroundColor Yellow
+    Write-Host "  winget install k6 --source winget" -ForegroundColor Yellow
+    Write-Host "  choco install k6" -ForegroundColor Yellow
+    Write-Host "  scoop install k6" -ForegroundColor Yellow
+    exit 1
+}
+
+# Create reports directory if it doesn't exist
+if (-not (Test-Path "reports")) {
+    New-Item -ItemType Directory -Path "reports" | Out-Null
+}
+
+# Collect environment variable arguments
+$envArgs = @()
+
+if (Test-Path $EnvFile) {
+    Write-Host "Loading environment from $EnvFile..." -ForegroundColor Green
+    $lines = @()
+    try {
+        $lines = Get-Content $EnvFile -ErrorAction Stop
+    } catch {
+        $lines = cmd.exe /c "type `"$EnvFile`""
+    }
+    $lines | ForEach-Object {
+        $line = $_.Trim()
+        if ($line -and -not $line.StartsWith("#")) {
+            $parts = $line -split "=", 2
+            if ($parts.Length -eq 2) {
+                $key = $parts[0].Trim()
+                $val = $parts[1].Trim().Trim('"').Trim("'")
+                $envArgs += "-e"
+                $envArgs += "$key=$val"
+            }
+        }
+    }
+} else {
+    Write-Host "Warning: $EnvFile not found. Using defaults from config/env.js." -ForegroundColor Yellow
+}
+
+# Execute k6
+$fullArgs = @("run") + $envArgs + @($Script)
+if ($AdditionalArgs) {
+    $fullArgs += $AdditionalArgs.Split(" ")
+}
+
+Write-Host "Executing: k6 $($fullArgs -join ' ')" -ForegroundColor Cyan
+& k6 $fullArgs

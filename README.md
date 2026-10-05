@@ -28,24 +28,35 @@ valet/
 │   ├── scenarios/
 │   │   ├── ramp-up.js      # 5-stage ramp-up options and performance thresholds
 │   │   ├── test-flow.js    # VU execution dispatcher (REST, SOAP, or BOTH)
-│   │   └── soap-flow.js    # Dedicated SOAP test flow with XML envelope generation
+│   │   ├── soap-flow.js    # Dedicated Valet SOAP test flow with XML envelope generation
+│   │   ├── device-flow.js  # Dedicated Device Services test flow (Kiosk, PMS, Sign)
+│   │   └── device-ramp-up.js # Options & SLA thresholds for Device Services
 │   └── utils/
 │       ├── metrics.js      # Custom k6 metrics (Trend, Rate, Counter)
 │       ├── summary.js      # Report generation (terminal summary & reports/summary.json)
 │       ├── tokens.js       # SharedArray token manager and VU-to-token validation
+│       ├── locations.js    # SharedArray random location selector for PMS and Payments
 │       └── xml.js          # XML/SOAP envelope builders & response tag extractors
 ├── scripts/
+│   ├── run.ps1             # PowerShell runner for Valet test suite (Windows)
+│   ├── run-device.ps1      # PowerShell runner for Device Services suite (Windows)
+│   ├── test-kiosk-ping.ps1 # Standalone test for Kiosk Ping SOAP call
+│   ├── test-kiosk.ps1      # Standalone test for Kiosk GetServerName SOAP call
+│   ├── test-pms.ps1        # Standalone test for PMS NewMessages SOAP call
+│   ├── test-sign.ps1       # Standalone test for Sign NewMessages SOAP call
+│   ├── test-payments.ps1   # Standalone test for Payments NewMessages SOAP call
 │   ├── generate-tokens.js  # Node.js script to create deduplicated tokens.json from TXT
 │   ├── generate-tokens.ps1 # PowerShell script to create deduplicated tokens.json from TXT
-│   ├── run.ps1             # PowerShell runner with automatic .env loading (Windows)
 │   └── run.sh              # Bash runner with automatic .env loading (Linux/macOS)
 ├── login-token-QA1.txt     # Raw source token pool (2,591 tokens)
 ├── tokens.json             # Deduplicated JSON array loaded by k6
+├── location-IDs.json       # Pool of Location GUIDs for PMS & Payments
 ├── .env.example            # Template for all environment variables
 ├── .env                    # Local environment configuration file
 ├── .gitignore              # Ignores sensitive .env files and test reports
 ├── package.json            # Convenient npm scripts
-├── main.js                 # Primary test entry point
+├── main.js                 # Primary Valet test entry point
+├── main-device.js          # Primary Device Services test entry point (Kiosk/PMS/Sign)
 └── README.md               # Documentation
 ```
 
@@ -179,7 +190,46 @@ npm test
 npm run test:quick
 ```
 
-#### Option D: Direct k6 CLI with Custom Flags
+#### Option D: Kiosk Fast Service (Ping)
+Fast response (~50ms) hitting `/device/kiosk.asmx`:
+```powershell
+npm run test:kiosk
+# OR via PowerShell runner
+.\scripts\run-kiosk.ps1
+```
+
+#### Option E: Valet Fast Service (GetServerName)
+Fast response (~50ms) hitting `/device/valet.asmx`:
+```powershell
+npm run test:valet
+# OR via PowerShell runner
+.\scripts\run-valet.ps1
+```
+
+#### Option F: Long-Polling Services in Parallel Terminals
+Each endpoint holds for 30-60s. Run each in its own terminal to load test simultaneously without blocking:
+```powershell
+# Terminal 1: PMS NewMessages load test
+npm run test:pms
+# OR: .\scripts\run-pms.ps1
+
+# Terminal 2: Sign NewMessages load test
+npm run test:sign
+# OR: .\scripts\run-sign.ps1
+
+# Terminal 3: Payments NewMessages load test
+npm run test:payments
+# OR: .\scripts\run-payments.ps1
+```
+
+#### Option G: Unified Parallel Long-Polling Runner
+Runs active long-poll endpoints concurrently using k6 independent multi-scenarios in a single process:
+```powershell
+npm run test:polling
+# OR: .\scripts\run-polling.ps1
+```
+
+#### Option H: Direct k6 CLI with Custom Flags
 ```powershell
 k6 run -e TEST_TYPE=SOAP -e BASE_URL="https://soap.yourcompany.com" -e SOAP_ACTION="GetAccount" main.js
 ```
@@ -281,8 +331,15 @@ When `API_USERNAME` and `API_PASSWORD` are provided, the SOAP flow automatically
 
 ## 📊 Reports & Analysis
 
-When a test run completes:
+Each test suite automatically creates dedicated, isolated report files inside the `reports/` directory with its own name:
 
-1. **Terminal Summary**: Total requests, error rate, average latency, p95, and p99 values.
-2. **JSON Summary File**: Exported to `reports/summary.json` for CI/CD metrics collection.
-3. **Threshold Gates**: If p95 exceeds your limit or error rate exceeds 1%, k6 exits with non-zero exit code (`99`), automatically failing CI/CD pipelines.
+| Test Suite | Command | HTML Dashboard | JSON Metrics | Markdown Summary |
+|---|---|---|---|---|
+| **Kiosk** (Ping/GetServerName) | `npm run test:kiosk` | `reports/report-kiosk.html` | `reports/summary-kiosk.json` | `reports/summary-kiosk.md` |
+| **PMS** (NewMessages) | `npm run test:pms` | `reports/report-pms.html` | `reports/summary-pms.json` | `reports/summary-pms.md` |
+| **Sign** (NewMessages) | `npm run test:sign` | `reports/report-sign.html` | `reports/summary-sign.json` | `reports/summary-sign.md` |
+| **Payments** (NewMessages) | `npm run test:payments` | `reports/report-payments.html` | `reports/summary-payments.json` | `reports/summary-payments.md` |
+| **Parallel Polling** | `npm run test:polling` | `reports/report-polling.html` | `reports/summary-polling.json` | `reports/summary-polling.md` |
+| **Valet** (NewMessages4) | `npm test` | `reports/report-valet.html` | `reports/summary-valet.json` | `reports/summary-valet.md` |
+
+> *Tip: You can override the output report name at runtime by passing `-e REPORT_NAME=custom_name`.*
