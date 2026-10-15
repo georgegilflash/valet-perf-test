@@ -39,6 +39,8 @@ function formatDuration(ms) {
 function getServiceEndpoint(safeName) {
   const map = {
     kiosk: '/device/kiosk.asmx',
+    'known-drivers': '/device/kiosk.asmx (GetKnownDrivers)',
+    'known-driver-changes': '/device/kiosk.asmx (GetKnownDriverChanges)',
     valet: '/device/valet.asmx',
     pms: '/device/pms.asmx',
     sign: '/device/sign.asmx',

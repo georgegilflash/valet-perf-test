@@ -10,6 +10,8 @@ export const deviceMetrics = {
   pingDuration: new Trend('device_kiosk_ping_duration'),
   pingSuccess: new Rate('device_kiosk_ping_success_rate'),
   getServerNameDuration: new Trend('device_kiosk_get_server_name_duration'),
+  getKnownDriversDuration: new Trend('device_kiosk_get_known_drivers_duration'),
+  getKnownDriverChangesDuration: new Trend('device_kiosk_get_known_driver_changes_duration'),
   pmsDuration: new Trend('device_pms_duration'),
   signDuration: new Trend('device_sign_duration'),
   totalErrors: new Counter('device_total_errors'),
@@ -99,6 +101,129 @@ export function callKioskGetServerName() {
 
   if (config.debugResponse || !isSuccess) {
     console.log(`--- [VU ${__VU}] [Kiosk GetServerName Response] ---\n${res.body || '(empty)'}\n-----------------------------`);
+  }
+
+  return res;
+}
+
+/**
+ * Executes Kiosk GetKnownDrivers call (/device/kiosk.asmx -> GetKnownDrivers)
+ */
+export function callKioskGetKnownDrivers(customParams = {}) {
+  const kioskId = customParams.kioskId || config.deviceSuite.kioskId;
+  const fromDate = customParams.from || config.deviceSuite.knownDriversFrom;
+  const start = customParams.start !== undefined ? customParams.start : config.deviceSuite.knownDriversStart;
+  const count = customParams.count !== undefined ? customParams.count : config.deviceSuite.knownDriversCount;
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <GetKnownDrivers xmlns="http://kleverlogic.com/webservices/">
+      <kioskID>${kioskId}</kioskID>
+      <from>${fromDate}</from>
+      <start>${start}</start>
+      <count>${count}</count>
+    </GetKnownDrivers>
+  </soap12:Body>
+</soap12:Envelope>`;
+
+  const startTime = new Date();
+  const res = apiClient.soap('/device/kiosk.asmx', null, xml, {
+    name: 'Kiosk_GetKnownDrivers',
+    timeout: '60s',
+  }, '1.2');
+
+  const durationSec = ((new Date() - startTime) / 1000).toFixed(2);
+  const hasFault = isSoapFault(res.body);
+  const resultCode = extractXmlValue(res.body, 'Code') || '';
+  const description = extractXmlValue(res.body, 'Description') || '';
+  const isBusinessFailure = resultCode.toLowerCase() === 'failed';
+  const isSuccess = res.status === 200 && !hasFault && !isBusinessFailure;
+
+  check(res, {
+    'kiosk_get_known_drivers status is 200': (r) => r.status === 200,
+    'kiosk_get_known_drivers no SOAP fault': () => !hasFault,
+    'kiosk_get_known_drivers result code success': () => !isBusinessFailure,
+  });
+
+  deviceMetrics.getKnownDriversDuration.add(res.timings.duration);
+  if (!isSuccess) deviceMetrics.totalErrors.add(1);
+
+  if (isSuccess) {
+    console.log(`[VU ${__VU}] [Kiosk GetKnownDrivers] OK (200) in ${durationSec}s | Code: ${resultCode || 'Success'}`);
+  } else {
+    console.log(`[VU ${__VU}] [Kiosk GetKnownDrivers] FAILED (${res.status}) in ${durationSec}s | Code: ${resultCode || 'Error'} | Reason: ${description || 'Unknown'}`);
+  }
+
+  if (config.debugResponse || !isSuccess) {
+    console.log(`--- [VU ${__VU}] [Kiosk GetKnownDrivers Response] ---\n${res.body || '(empty)'}\n-----------------------------`);
+  }
+
+  return res;
+}
+
+/**
+ * Executes Kiosk GetKnownDriverChanges call (/device/kiosk.asmx -> GetKnownDriverChanges)
+ */
+export function callKioskGetKnownDriverChanges(customParams = {}) {
+  const kioskId = customParams.kioskId || config.deviceSuite.kioskId;
+  const now = new Date();
+  const year = customParams.year || config.deviceSuite.knownDriverChangesYear || now.getUTCFullYear();
+  const month = customParams.month || config.deviceSuite.knownDriverChangesMonth || (now.getUTCMonth() + 1);
+  const day = customParams.day || config.deviceSuite.knownDriverChangesDay || now.getUTCDate();
+  const total = customParams.total !== undefined ? customParams.total : config.deviceSuite.knownDriverChangesTotal;
+  const burnt = customParams.burnt !== undefined ? customParams.burnt : config.deviceSuite.knownDriverChangesBurnt;
+
+  const clientXml = customParams.clientXml || `<client>
+        <DatabaseChange>
+          <Year xmlns="urn:KleverLogic.FlashParcs.Web">${year}</Year>
+          <Month xmlns="urn:KleverLogic.FlashParcs.Web">${month}</Month>
+          <Day xmlns="urn:KleverLogic.FlashParcs.Web">${day}</Day>
+          <Total xmlns="urn:KleverLogic.FlashParcs.Web">${total}</Total>
+          <Burnt xmlns="urn:KleverLogic.FlashParcs.Web">${burnt}</Burnt>
+        </DatabaseChange>
+      </client>`;
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <GetKnownDriverChanges xmlns="http://kleverlogic.com/webservices/">
+      <kioskID>${kioskId}</kioskID>
+      ${clientXml}
+    </GetKnownDriverChanges>
+  </soap12:Body>
+</soap12:Envelope>`;
+
+  const startTime = new Date();
+  const res = apiClient.soap('/device/kiosk.asmx', null, xml, {
+    name: 'Kiosk_GetKnownDriverChanges',
+    timeout: '60s',
+  }, '1.2');
+
+  const durationSec = ((new Date() - startTime) / 1000).toFixed(2);
+  const hasFault = isSoapFault(res.body);
+  const resultCode = extractXmlValue(res.body, 'Code') || '';
+  const description = extractXmlValue(res.body, 'Description') || '';
+  const isBusinessFailure = resultCode.toLowerCase() === 'failed';
+  const isSuccess = res.status === 200 && !hasFault && !isBusinessFailure;
+
+  check(res, {
+    'kiosk_get_known_driver_changes status is 200': (r) => r.status === 200,
+    'kiosk_get_known_driver_changes no SOAP fault': () => !hasFault,
+    'kiosk_get_known_driver_changes result code success': () => !isBusinessFailure,
+  });
+
+  deviceMetrics.getKnownDriverChangesDuration.add(res.timings.duration);
+  if (!isSuccess) deviceMetrics.totalErrors.add(1);
+
+  if (isSuccess) {
+    console.log(`[VU ${__VU}] [Kiosk GetKnownDriverChanges] OK (200) in ${durationSec}s | Code: ${resultCode || 'Success'}`);
+  } else {
+    console.log(`[VU ${__VU}] [Kiosk GetKnownDriverChanges] FAILED (${res.status}) in ${durationSec}s | Code: ${resultCode || 'Error'} | Reason: ${description || 'Unknown'}`);
+  }
+
+  if (config.debugResponse || !isSuccess) {
+    console.log(`--- [VU ${__VU}] [Kiosk GetKnownDriverChanges Response] ---\n${res.body || '(empty)'}\n-----------------------------`);
   }
 
   return res;
@@ -290,6 +415,8 @@ export function executeDeviceSuiteFlow() {
   const {
     enableKioskPing,
     enableKioskGetServerName,
+    enableKioskGetKnownDrivers,
+    enableKioskGetKnownDriverChanges,
     enablePmsNewMessages,
     enableSignNewMessages,
     enablePaymentsNewMessages,
@@ -303,6 +430,16 @@ export function executeDeviceSuiteFlow() {
   // Run Kiosk GetServerName if enabled
   if (enableKioskGetServerName) {
     callKioskGetServerName();
+  }
+
+  // Run Kiosk GetKnownDrivers if enabled
+  if (enableKioskGetKnownDrivers) {
+    callKioskGetKnownDrivers();
+  }
+
+  // Run Kiosk GetKnownDriverChanges if enabled
+  if (enableKioskGetKnownDriverChanges) {
+    callKioskGetKnownDriverChanges();
   }
 
   // Run PMS NewMessages if enabled
