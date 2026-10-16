@@ -6,7 +6,8 @@ import {
   buildSoap12Envelope, 
   buildWsSecurityHeader, 
   extractXmlValue, 
-  isSoapFault 
+  isSoapFault,
+  formatXml
 } from '../utils/xml.js';
 import { getVuToken } from '../utils/tokens.js';
 import { config } from '../../config/env.js';
@@ -79,7 +80,7 @@ export function executeSoapFlow(customToken = null) {
     // Print full response body if DEBUG_RESPONSE=true or if request failed
     if (config.debugResponse || !isSuccess) {
       console.log(`\n---------------- [VU ${__VU}] RESPONSE BODY (HTTP ${res.status}) ----------------`);
-      console.log(res.body || '(empty body)');
+      console.log(formatXml(res.body));
       console.log(`----------------------------------------------------------------------\n`);
     }
 

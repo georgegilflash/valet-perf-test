@@ -2,6 +2,7 @@ import { check, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { callKioskGetKnownDriverChanges } from './src/scenarios/device-flow.js';
 import { generateSummary } from './src/utils/summary.js';
+import { validateKioskPool } from './src/utils/kiosks.js';
 import { config } from './config/env.js';
 
 // ==============================================================================
@@ -27,6 +28,19 @@ const STAGE_4_DURATION = null; // e.g. '2m'
 const STAGE_5_TARGET = null;   // e.g. 0
 const STAGE_5_DURATION = null; // e.g. '1m'
 
+// ==============================================================================
+// RANDOM RANGE CONFIGURATION (Modify directly here, or leave null to use .env)
+// ==============================================================================
+const DATE_MIN = '2026-01-01'; // Min Date (YYYY-MM-DD)
+const DATE_MAX = '2026-10-16'; // Max Date (YYYY-MM-DD)
+const TOTAL_MIN = 1;           // Min requested Total
+const TOTAL_MAX = 50;          // Max requested Total
+
+const resolvedDateMin = __ENV.KNOWN_DRIVER_CHANGES_DATE_MIN || DATE_MIN || config.deviceSuite.knownDriverChangesDateMin;
+const resolvedDateMax = __ENV.KNOWN_DRIVER_CHANGES_DATE_MAX || DATE_MAX || config.deviceSuite.knownDriverChangesDateMax;
+const resolvedTotalMin = __ENV.KNOWN_DRIVER_CHANGES_TOTAL_MIN ? parseInt(__ENV.KNOWN_DRIVER_CHANGES_TOTAL_MIN, 10) : (TOTAL_MIN ?? config.deviceSuite.knownDriverChangesTotalMin);
+const resolvedTotalMax = __ENV.KNOWN_DRIVER_CHANGES_TOTAL_MAX ? parseInt(__ENV.KNOWN_DRIVER_CHANGES_TOTAL_MAX, 10) : (TOTAL_MAX ?? config.deviceSuite.knownDriverChangesTotalMax);
+
 const stages = [
   { target: STAGE_1_TARGET ?? config.stages[0].target, duration: STAGE_1_DURATION ?? config.stages[0].duration },
   { target: STAGE_2_TARGET ?? config.stages[1].target, duration: STAGE_2_DURATION ?? config.stages[1].duration },
@@ -51,14 +65,22 @@ export function setup() {
   console.log(`\n======================================================================`);
   console.log(`[k6 Setup] KIOSK GET_KNOWN_DRIVER_CHANGES TEST (/device/kiosk.asmx)`);
   console.log(`======================================================================`);
-  const now = new Date();
-  const year = config.deviceSuite.knownDriverChangesYear || now.getUTCFullYear();
-  const month = config.deviceSuite.knownDriverChangesMonth || (now.getUTCMonth() + 1);
-  const day = config.deviceSuite.knownDriverChangesDay || now.getUTCDate();
+
+  // Calculate maximum concurrent users required across all stages
+  const maxRequiredVUs = Math.max(...stages.map((s) => s.target), 1);
+  const kioskValidation = validateKioskPool(maxRequiredVUs);
+
+  // If kiosk-ids.json does not have enough Kiosk IDs for the required VUs, abort immediately!
+  if (!kioskValidation.valid) {
+    console.error(`\n❌ ${kioskValidation.error}\n`);
+    throw new Error(kioskValidation.error);
+  }
+
   console.log(`Target Base URL:     ${config.baseUrl}`);
   console.log(`Endpoint:            /device/kiosk.asmx (GetKnownDriverChanges)`);
-  console.log(`Kiosk ID:            ${config.deviceSuite.kioskId}`);
-  console.log(`Date (Y-M-D):        ${year}-${month}-${day} (Total: ${config.deviceSuite.knownDriverChangesTotal}, Burnt: ${config.deviceSuite.knownDriverChangesBurnt})`);
+  console.log(`Kiosk ID Pool:       ${kioskValidation.message}`);
+  console.log(`Date Range (Y-M-D):  ${resolvedDateMin} -> ${resolvedDateMax} (Random per request, expects same date)`);
+  console.log(`Total Range:         ${resolvedTotalMin} -> ${resolvedTotalMax} (Random per request, expects <= total, Burnt: ${config.deviceSuite.knownDriverChangesBurnt})`);
   console.log(`Stages configured:`);
   stages.forEach((s, idx) => {
     console.log(`  Stage ${idx + 1}: ${s.duration} -> target ${s.target} VUs`);
@@ -69,7 +91,12 @@ export function setup() {
 }
 
 export default function () {
-  callKioskGetKnownDriverChanges();
+  callKioskGetKnownDriverChanges({
+    dateMin: resolvedDateMin,
+    dateMax: resolvedDateMax,
+    totalMin: resolvedTotalMin,
+    totalMax: resolvedTotalMax,
+  });
   sleep(1);
 }
 

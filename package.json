@@ -6,7 +6,9 @@
   "scripts": {
     "tokens": "node ./scripts/generate-tokens.js",
     "locations": "node ./scripts/generate-location-ids.js",
+    "kiosks": "node ./scripts/generate-kiosk-ids.js",
     "tokens:ps": "powershell -ExecutionPolicy Bypass -File ./scripts/generate-tokens.ps1",
+    "kiosks:ps": "powershell -ExecutionPolicy Bypass -File ./scripts/generate-kiosk-ids.ps1",
     "test": "powershell -ExecutionPolicy Bypass -File ./scripts/run.ps1",
     "test:debug": "powershell -ExecutionPolicy Bypass -File ./scripts/run.ps1 -AdditionalArgs \"-e DEBUG_RESPONSE=true\"",
     "test:soap": "powershell -ExecutionPolicy Bypass -Command \"k6 run -e TEST_TYPE=SOAP main.js\"",

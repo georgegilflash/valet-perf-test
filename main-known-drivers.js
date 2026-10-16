@@ -2,6 +2,7 @@ import { check, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { callKioskGetKnownDrivers } from './src/scenarios/device-flow.js';
 import { generateSummary } from './src/utils/summary.js';
+import { validateKioskPool } from './src/utils/kiosks.js';
 import { config } from './config/env.js';
 
 // ==============================================================================
@@ -27,6 +28,19 @@ const STAGE_4_DURATION = null; // e.g. '2m'
 const STAGE_5_TARGET = null;   // e.g. 0
 const STAGE_5_DURATION = null; // e.g. '1m'
 
+// ==============================================================================
+// RANDOM RANGE CONFIGURATION (Modify directly here, or leave null to use .env)
+// ==============================================================================
+const FROM_DATE_MIN = '2026-01-01T00:00:00'; // Min FromDate (ISO UTC)
+const FROM_DATE_MAX = '2026-08-27T00:00:00'; // Max FromDate (ISO UTC)
+const COUNT_MIN = 1;                         // Min requested count
+const COUNT_MAX = 50;                        // Max requested count
+
+const resolvedFromMin = __ENV.KNOWN_DRIVERS_FROM_MIN || FROM_DATE_MIN || config.deviceSuite.knownDriversFromMin;
+const resolvedFromMax = __ENV.KNOWN_DRIVERS_FROM_MAX || FROM_DATE_MAX || config.deviceSuite.knownDriversFromMax;
+const resolvedCountMin = __ENV.KNOWN_DRIVERS_COUNT_MIN ? parseInt(__ENV.KNOWN_DRIVERS_COUNT_MIN, 10) : (COUNT_MIN ?? config.deviceSuite.knownDriversCountMin);
+const resolvedCountMax = __ENV.KNOWN_DRIVERS_COUNT_MAX ? parseInt(__ENV.KNOWN_DRIVERS_COUNT_MAX, 10) : (COUNT_MAX ?? config.deviceSuite.knownDriversCountMax);
+
 const stages = [
   { target: STAGE_1_TARGET ?? config.stages[0].target, duration: STAGE_1_DURATION ?? config.stages[0].duration },
   { target: STAGE_2_TARGET ?? config.stages[1].target, duration: STAGE_2_DURATION ?? config.stages[1].duration },
@@ -51,12 +65,23 @@ export function setup() {
   console.log(`\n============================================================`);
   console.log(`[k6 Setup] KIOSK GET_KNOWN_DRIVERS TEST (/device/kiosk.asmx)`);
   console.log(`============================================================`);
+
+  // Calculate maximum concurrent users required across all stages
+  const maxRequiredVUs = Math.max(...stages.map((s) => s.target), 1);
+  const kioskValidation = validateKioskPool(maxRequiredVUs);
+
+  // If kiosk-ids.json does not have enough Kiosk IDs for the required VUs, abort immediately!
+  if (!kioskValidation.valid) {
+    console.error(`\n❌ ${kioskValidation.error}\n`);
+    throw new Error(kioskValidation.error);
+  }
+
   console.log(`Target Base URL:     ${config.baseUrl}`);
   console.log(`Endpoint:            /device/kiosk.asmx (GetKnownDrivers)`);
-  console.log(`Kiosk ID:            ${config.deviceSuite.kioskId}`);
-  console.log(`From Date:           ${config.deviceSuite.knownDriversFrom}`);
+  console.log(`Kiosk ID Pool:       ${kioskValidation.message}`);
+  console.log(`FromDate Range:      ${resolvedFromMin} -> ${resolvedFromMax} (Random per request)`);
   console.log(`Start Index:         ${config.deviceSuite.knownDriversStart}`);
-  console.log(`Count:               ${config.deviceSuite.knownDriversCount}`);
+  console.log(`Count Range:         ${resolvedCountMin} -> ${resolvedCountMax} (Random per request, expects <= count)`);
   console.log(`Stages configured:`);
   stages.forEach((s, idx) => {
     console.log(`  Stage ${idx + 1}: ${s.duration} -> target ${s.target} VUs`);
@@ -67,7 +92,12 @@ export function setup() {
 }
 
 export default function () {
-  callKioskGetKnownDrivers();
+  callKioskGetKnownDrivers({
+    fromMin: resolvedFromMin,
+    fromMax: resolvedFromMax,
+    countMin: resolvedCountMin,
+    countMax: resolvedCountMax,
+  });
   sleep(1);
 }
 
