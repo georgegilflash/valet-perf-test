@@ -205,9 +205,17 @@
                 Select a scenario below to edit its VUs per stage and sequential steps (<code class="text-sky-400">Step 1 → Step 2 → ...</code>). Drag steps to reorder them!
               </p>
             </div>
-            <button onclick="addNewScenario()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition flex items-center gap-1.5">
-              <span>+ New Scenario</span>
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="openRecentRunsModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 text-xs font-semibold shadow transition flex items-center gap-1.5" title="Load scenarios from the last 5 executed runs">
+                <span>⏱️ Last 5 Runs</span>
+              </button>
+              <button onclick="openLayoutsManagerModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold shadow transition flex items-center gap-1.5" title="Save or load scenario layouts">
+                <span>💾 Layouts</span>
+              </button>
+              <button onclick="addNewScenario()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition flex items-center gap-1.5">
+                <span>+ New Scenario</span>
+              </button>
+            </div>
           </div>
 
           <div id="selected-endpoints-config" class="space-y-5">
@@ -480,6 +488,6 @@
 
   </main>
 
-  <script src="/app.js"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

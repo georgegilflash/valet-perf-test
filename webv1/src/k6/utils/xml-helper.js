@@ -17,6 +17,88 @@ export function extractXmlValue(xmlString, tagName) {
   return match ? match[1].trim() : null;
 }
 
+export function extractAllXmlValues(xmlString, tagName) {
+  if (!xmlString || typeof xmlString !== 'string') return [];
+  const regex = new RegExp(
+    `<(?:[\\w-]+:)?${tagName}(?:\\s+[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?${tagName}>`,
+    'gi'
+  );
+  const results = [];
+  let match;
+  while ((match = regex.exec(xmlString)) !== null) {
+    results.push(match[1].trim());
+  }
+  return results;
+}
+
+/**
+ * Formats/indents XML strings for human-readable console output.
+ */
+export function formatXml(xmlString, indent = '  ') {
+  if (!xmlString || typeof xmlString !== 'string') return '(empty)';
+  const trimmed = xmlString.trim();
+  if (!trimmed.startsWith('<')) return trimmed;
+
+  const normalized = trimmed.replace(/>\s*</g, '>\n<');
+  const lines = normalized.split(/\r?\n/);
+  let padLevel = 0;
+  const formattedLines = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    if (/^<\/[^>]+>$/.test(line)) {
+      padLevel = Math.max(0, padLevel - 1);
+      formattedLines.push(indent.repeat(padLevel) + line);
+    } else if (/^<\?[\s\S]*\?>$/.test(line) || /^<![\s\S]*>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    } else if (/^<[^>]+\/>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    } else if (/^<([^\s/>]+)[^>]*>[\s\S]*<\/\1>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    } else if (/^<[^/!?][^>]*>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+      padLevel++;
+    } else {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    }
+  }
+
+  return formattedLines.join('\n');
+}
+
+/**
+ * Produces a concise, informative 1-line or multi-line summary of the response body.
+ */
+export function summarizeResponseBody(body, maxLength = 260) {
+  if (!body || typeof body !== 'string') return '(empty)';
+  const trimmed = body.trim();
+
+  // Try extracting common SOAP / XML elements
+  const code = extractXmlValue(trimmed, 'Code');
+  const description = extractXmlValue(trimmed, 'Description');
+  const message = extractXmlValue(trimmed, 'Message') || extractXmlValue(trimmed, 'faultstring');
+  const knownDrivers = extractAllXmlValues(trimmed, 'KnownDriver');
+  const dbChanges = extractAllXmlValues(trimmed, 'DatabaseChange');
+
+  const details = [];
+  if (code) details.push(`Code: ${code}`);
+  if (description) details.push(`Desc: ${description}`);
+  if (message) details.push(`Msg: ${message}`);
+  if (knownDrivers.length > 0) details.push(`KnownDrivers: ${knownDrivers.length}`);
+  if (dbChanges.length > 0) details.push(`DatabaseChanges: ${dbChanges.length}`);
+
+  if (details.length > 0) {
+    return details.join(' | ');
+  }
+
+  // Fallback: clean snippet
+  const flattened = trimmed.replace(/\s+/g, ' ');
+  if (flattened.length <= maxLength) return flattened;
+  return flattened.slice(0, maxLength) + '...';
+}
+
 export function buildSoapEnvelope(endpointConfig, selectedIdValue) {
   // Allow user to provide a raw customXmlBody in JSON if they added a custom endpoint
   if (endpointConfig.customXmlBody && typeof endpointConfig.customXmlBody === 'string') {
@@ -27,6 +109,50 @@ export function buildSoapEnvelope(endpointConfig, selectedIdValue) {
   const opName = endpointConfig.operationName || 'Ping';
   const ns = endpointConfig.xmlNamespace || 'http://kleverlogic.com/webservices/';
   const xmlElement = endpointConfig.data?.xmlElement || 'id';
+
+  // Specific handler for GetKnownDrivers (SOAP 1.2)
+  if (opName === 'GetKnownDrivers' || endpointConfig.id === 'callKioskGetKnownDrivers') {
+    const fromDate = endpointConfig.data?.from || endpointConfig.data?.fromDate || endpointConfig.data?.dateRange?.fromMin || '2026-08-27T00:00:00';
+    const start = endpointConfig.data?.start !== undefined ? endpointConfig.data.start : 0;
+    const count = endpointConfig.data?.count !== undefined ? endpointConfig.data.count : (endpointConfig.data?.quantities?.max || 10);
+    return `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <GetKnownDrivers xmlns="http://kleverlogic.com/webservices/">
+      <kioskID>${selectedIdValue || ''}</kioskID>
+      <from>${fromDate}</from>
+      <start>${start}</start>
+      <count>${count}</count>
+    </GetKnownDrivers>
+  </soap12:Body>
+</soap12:Envelope>`;
+  }
+
+  // Specific handler for GetKnownDriverChanges (SOAP 1.2)
+  if (opName === 'GetKnownDriverChanges' || endpointConfig.id === 'callKioskGetKnownDriverChanges') {
+    const year = endpointConfig.data?.year !== undefined ? endpointConfig.data.year : 2026;
+    const month = endpointConfig.data?.month !== undefined ? endpointConfig.data.month : 8;
+    const day = endpointConfig.data?.day !== undefined ? endpointConfig.data.day : 27;
+    const total = endpointConfig.data?.total !== undefined ? endpointConfig.data.total : 0;
+    const burnt = endpointConfig.data?.burnt !== undefined ? endpointConfig.data.burnt : 0;
+    return `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <GetKnownDriverChanges xmlns="http://kleverlogic.com/webservices/">
+      <kioskID>${selectedIdValue || ''}</kioskID>
+      <client>
+        <DatabaseChange>
+          <Year xmlns="urn:KleverLogic.FlashParcs.Web">${year}</Year>
+          <Month xmlns="urn:KleverLogic.FlashParcs.Web">${month}</Month>
+          <Day xmlns="urn:KleverLogic.FlashParcs.Web">${day}</Day>
+          <Total xmlns="urn:KleverLogic.FlashParcs.Web">${total}</Total>
+          <Burnt xmlns="urn:KleverLogic.FlashParcs.Web">${burnt}</Burnt>
+        </DatabaseChange>
+      </client>
+    </GetKnownDriverChanges>
+  </soap12:Body>
+</soap12:Envelope>`;
+  }
 
   const innerParam = selectedIdValue
     ? `<${xmlElement}>${selectedIdValue}</${xmlElement}>`

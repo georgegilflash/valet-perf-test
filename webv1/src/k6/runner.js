@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
-import { isSoapFault, extractXmlValue, buildSoapEnvelope } from './utils/xml-helper.js';
+import { isSoapFault, extractXmlValue, buildSoapEnvelope, formatXml, summarizeResponseBody } from './utils/xml-helper.js';
 import { generateMultiReports } from './report-generator.js';
 
 // Load the validated test-performance-script.json passed via environment variable
@@ -250,6 +250,8 @@ function executeStep(step, stepOrder, scenarioObj) {
     }
 
     const codeTag = extractXmlValue(res.body, 'Code') || '';
+    const descTag = extractXmlValue(res.body, 'Description') || '';
+    const bodySummary = summarizeResponseBody(res.body);
     const shortId = selectedId ? selectedId.slice(0, 8) + '...' : 'N/A';
 
     // Emit URL-encoded JSON between delimiters so logrus escaping or `source=console` never breaks parsing
@@ -272,12 +274,16 @@ function executeStep(step, stepOrder, scenarioObj) {
 
     if (isSuccess) {
       console.log(
-        `[${scenarioObj.name || scenarioObj.id} | Step ${stepOrder}] [VU ${__VU}] [${step.name || epId}] OK (${res.status}) in ${(durationMs / 1000).toFixed(2)}s | ID: ${shortId}${codeTag ? ` | Code: ${codeTag}` : ''}`
+        `[${scenarioObj.name || scenarioObj.id} | Step ${stepOrder}] [VU ${__VU}] [${step.name || epId}] OK (${res.status}) in ${(durationMs / 1000).toFixed(2)}s | ID: ${shortId} | Summary: [${bodySummary}]`
       );
     } else {
       console.log(
-        `[${scenarioObj.name || scenarioObj.id} | Step ${stepOrder}] [VU ${__VU}] [${step.name || epId}] FAILED (${res.status}) in ${(durationMs / 1000).toFixed(2)}s | ID: ${shortId} | Error: ${livePayload.error}`
+        `[${scenarioObj.name || scenarioObj.id} | Step ${stepOrder}] [VU ${__VU}] [${step.name || epId}] FAILED (${res.status}) in ${(durationMs / 1000).toFixed(2)}s | ID: ${shortId} | Error: ${livePayload.error} | Summary: [${bodySummary}]`
       );
+    }
+
+    if (res.body) {
+      console.log(`--- [VU ${__VU}] [${step.name || epId}] Response Body (HTTP ${res.status}) ---\n${formatXml(res.body)}\n------------------------------------------------------------`);
     }
   });
 
