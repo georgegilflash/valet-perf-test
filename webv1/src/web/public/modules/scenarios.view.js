@@ -262,6 +262,19 @@ export function addStepToScenario(scenarioId, endpointId, insertIndex = null) {
     sc.steps.push(newStep);
   }
 
+  // Automatic pairing for Ticket issuance: when adding IssueTicket2, pair with GetTicket step
+  if (endpointId === 'callKioskIssueTicket2') {
+    newStep.thinkTimeSec = 5.0; // Wait 5 seconds after issuing before checking with GetTicket
+    const pairStep = createStepInstanceFromTemplate('callKioskGetTicket', false);
+    if (pairStep) {
+      const pairIdx = insertIndex !== null && insertIndex >= 0 ? insertIndex + 1 : sc.steps.length;
+      sc.steps.splice(pairIdx, 0, pairStep);
+      renderSelectedEndpointsConfig();
+      showToast(`Added "${newStep.name}" (5s think time) and automatically paired with "${pairStep.name}"`, 'info');
+      return;
+    }
+  }
+
   renderSelectedEndpointsConfig();
   showToast(`Added step "${newStep.name}" to ${sc.name}`, 'info');
 }
@@ -679,6 +692,59 @@ export function renderSelectedEndpointsConfig() {
                             oninput="updateStepDataField('${sc.id}', ${stepIdx}, 'burnt', parseInt(this.value, 10) || 0)"
                             class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-sky-500" />
                         </div>
+                      </div>
+                    </div>`
+                      : ''
+                  }
+
+                  ${
+                    step.endpointId === 'callKioskIssueTicket2' || step.id === 'callKioskIssueTicket2'
+                      ? `
+                    <div class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3 space-y-2.5">
+                      <div class="flex items-center justify-between">
+                        <h5 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                          <span>🎟️ IssueTicket2 Settings</span>
+                        </h5>
+                        <span class="text-[10px] text-slate-400 font-mono">kioskID: selected from pool above</span>
+                      </div>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-2">
+                          <label class="block text-[10px] text-slate-400 mb-1">Ticket Number Prefix</label>
+                          <input type="text" value="${escapeHtml(step.data?.prefix || 'PERF-')}"
+                            oninput="updateStepDataField('${sc.id}', ${stepIdx}, 'prefix', this.value)"
+                            placeholder="PERF-"
+                            class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-emerald-300 font-bold focus:outline-none focus:border-emerald-500" />
+                          <span class="block text-[9px] text-slate-500 mt-1">Generates: <code>${escapeHtml(step.data?.prefix || 'PERF-')}&lt;timestamp_ms&gt;-&lt;1..100&gt;</code></span>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-2">
+                          <label class="block text-[10px] text-slate-400 mb-1">Ticket ID (GUID Generation)</label>
+                          <div class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-700/60 rounded px-2 py-1">
+                            Dynamic GUID (unique per iteration)
+                          </div>
+                          <span class="block text-[9px] text-slate-500 mt-1">Shared with subsequent steps (e.g. <code>GetTicket</code>)</span>
+                        </div>
+                      </div>
+                    </div>`
+                      : ''
+                  }
+
+                  ${
+                    step.endpointId === 'callKioskGetTicket' || step.id === 'callKioskGetTicket'
+                      ? `
+                    <div class="bg-slate-900/80 border border-indigo-500/30 rounded-xl p-3 space-y-2.5">
+                      <div class="flex items-center justify-between">
+                        <h5 class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                          <span>🔍 GetTicket Lookup Settings</span>
+                        </h5>
+                        <span class="text-[10px] text-slate-400 font-mono">kioskID: selected from pool above</span>
+                      </div>
+                      <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-1">
+                        <div class="flex items-center gap-2 text-indigo-300 font-semibold text-[11px]">
+                          <span>ℹ️ Iteration Context Binding</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">
+                          When preceded by <code class="text-emerald-300">IssueTicket2</code> in the same scenario, this step automatically verifies the exact <code class="text-sky-300">ticketID</code> generated by that issuance.
+                        </p>
                       </div>
                     </div>`
                       : ''

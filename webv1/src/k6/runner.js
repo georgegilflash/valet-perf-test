@@ -1,12 +1,12 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
-import { isSoapFault, extractXmlValue, buildSoapEnvelope, formatXml, summarizeResponseBody } from './utils/xml-helper.js';
+import { isSoapFault, extractXmlValue, buildSoapEnvelope, formatXml, summarizeResponseBody, generateRandomGuid } from './utils/xml-helper.js';
 import { generateMultiReports } from './report-generator.js';
 
 // Load the validated test-performance-script.json passed via environment variable
-const configPath = __ENV.SCRIPT_CONFIG_PATH || '../../reports/latest/test-performance-script.json';
-const reportOutputDir = __ENV.REPORT_OUTPUT_DIR || 'reports/latest';
+const configPath = __ENV.PERF_SCRIPT_PATH || __ENV.SCRIPT_CONFIG_PATH || '../../reports/latest/test-performance-script.json';
+const reportOutputDir = __ENV.REPORT_DIR || __ENV.REPORT_OUTPUT_DIR || 'reports/latest';
 const runTimestamp = __ENV.RUN_TIMESTAMP || new Date().toISOString();
 
 const rawConfig = open(configPath);
@@ -142,7 +142,7 @@ export function setup() {
 /**
  * Executes a single step within a scenario and records metrics for its endpointId.
  */
-function executeStep(step, stepOrder, scenarioObj) {
+function executeStep(step, stepOrder, scenarioObj, iterationContext = {}) {
   const epId = step.endpointId || step.id;
   const m = endpointMetricsRegistry[epId];
   const selectedId = selectStepIdValue(step, __VU);
@@ -157,7 +157,7 @@ function executeStep(step, stepOrder, scenarioObj) {
 
     if (protocol === 'SOAP') {
       const soapVer = String(step.soapVersion || '1.1');
-      payloadStr = buildSoapEnvelope(step, selectedId);
+      payloadStr = buildSoapEnvelope(step, selectedId, iterationContext);
 
       const headers = {
         'Content-Type':
@@ -304,10 +304,17 @@ export function runScenarioSteps() {
     return;
   }
 
+  // Iteration-level context for chained steps (e.g. IssueTicket2 -> GetTicket)
+  const randomSuffix = Math.floor(Math.random() * 100) + 1;
+  const iterationContext = {
+    ticketID: generateRandomGuid(),
+    ticketNumber: `PERF-${Date.now()}-${randomSuffix}`
+  };
+
   for (let i = 0; i < sc.steps.length; i++) {
     const step = sc.steps[i];
     if (step && step.enabled !== false) {
-      executeStep(step, i + 1, sc);
+      executeStep(step, i + 1, sc, iterationContext);
     }
   }
 }

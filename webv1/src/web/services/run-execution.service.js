@@ -179,6 +179,13 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
     const savedScriptPath = path.join(runReportDir, 'test-performance-script.json');
     fs.writeFileSync(savedScriptPath, JSON.stringify(scriptConfig, null, 2), 'utf-8');
 
+    // Also mirror to reports/latest so fallback or external tools find it reliably
+    try {
+      const latestDir = path.join(reportsDir, 'latest');
+      if (!fs.existsSync(latestDir)) fs.mkdirSync(latestDir, { recursive: true });
+      fs.writeFileSync(path.join(latestDir, 'test-performance-script.json'), JSON.stringify(scriptConfig, null, 2), 'utf-8');
+    } catch (_) {}
+
     const globalStages = scriptConfig.globalConfig?.stages || scriptConfig.stages || [];
     const totalPlannedDurationSec = globalStages.reduce(
       (acc, s) => acc + parseDurationToSeconds(s.duration),
@@ -364,7 +371,9 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
     const childEnv = {
       ...process.env,
       PERF_SCRIPT_PATH: savedScriptPath,
-      REPORT_DIR: runReportDir
+      SCRIPT_CONFIG_PATH: savedScriptPath,
+      REPORT_DIR: runReportDir,
+      REPORT_OUTPUT_DIR: runReportDir
     };
 
     appendLog(`[Valet Perf Runner] Starting performance test run: ${folderName}`, 'info');

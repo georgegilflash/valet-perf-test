@@ -2,6 +2,8 @@ import { callPmsNewMessagesTemplate } from './callPmsNewMessages.template.js';
 import { callKioskPingTemplate } from './callKioskPing.template.js';
 import { callKioskGetKnownDriversTemplate } from './callKioskGetKnownDrivers.template.js';
 import { callKioskGetKnownDriverChangesTemplate } from './callKioskGetKnownDriverChanges.template.js';
+import { callKioskIssueTicket2Template } from './callKioskIssueTicket2.template.js';
+import { callKioskGetTicketTemplate } from './callKioskGetTicket.template.js';
 
 /**
  * Central Developer Catalog of Endpoint Templates
@@ -12,6 +14,8 @@ export const ENDPOINT_CATALOG = [
   callKioskPingTemplate,
   callKioskGetKnownDriversTemplate,
   callKioskGetKnownDriverChangesTemplate,
+  callKioskIssueTicket2Template,
+  callKioskGetTicketTemplate,
 ];
 
 /**
