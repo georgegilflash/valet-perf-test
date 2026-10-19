@@ -134,17 +134,18 @@ export function callKioskGetKnownDrivers(customParams = {}) {
     ? customParams.count
     : (config.deviceSuite.knownDriversCount ?? getRandomIntInRange(countMin, countMax));
 
-  const xml = `<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>
-    <GetKnownDrivers xmlns="http://kleverlogic.com/webservices/">
-      <kioskID>${kioskId}</kioskID>
-      <from>${fromDate}</from>
-      <start>${start}</start>
-      <count>${count}</count>
-    </GetKnownDrivers>
-  </soap12:Body>
-</soap12:Envelope>`;
+  const xml = `<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:web="http://kleverlogic.com/webservices/">
+   <soap:Header/>
+   <soap:Body>
+      <web:GetKnownDrivers>
+         <web:kioskID>${kioskId}</web:kioskID>
+         <web:from>2026-08-27T00:00:00</web:from>
+         <web:start>${start}</web:start>
+         <web:count>${count}</web:count>
+      </web:GetKnownDrivers>
+   </soap:Body>
+</soap:Envelope>`;
+
 
   const startTime = new Date();
   const res = apiClient.soap('/device/kiosk.asmx', null, xml, {

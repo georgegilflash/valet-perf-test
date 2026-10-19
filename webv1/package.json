@@ -1,0 +1,16 @@
+{
+  "name": "valet-performance-webview-v1",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Webview & Dockerized k6 Performance Testing Suite (webv1)",
+  "scripts": {
+    "start": "node src/web/server.js",
+    "dev": "node --watch src/web/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

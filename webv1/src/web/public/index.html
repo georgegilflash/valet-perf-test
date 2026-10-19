@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valet Performance Testing Studio — Webv1</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      background-color: #0b1120;
+      color: #e2e8f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .code-editor {
+      font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+      tab-size: 2;
+    }
+    .drop-zone-active {
+      border-color: #38bdf8 !important;
+      background-color: rgba(14, 165, 233, 0.12) !important;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+    }
+    .dragging-card {
+      opacity: 0.45;
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 font-bold text-white text-lg">
+          k6
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-white tracking-tight">Valet Performance Testing Studio</h1>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30">webv1</span>
+          </div>
+          <p class="text-xs text-slate-400">Drag & Drop Multi-Step Scenarios · Stage Configuration · HTML Reports (p50, p90, p95, p99)</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1.5 bg-slate-950/90 p-1.5 rounded-xl border border-slate-800">
+        <button id="tab-global" onclick="switchTab('global')" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 bg-sky-600 text-white shadow">
+          <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[11px]">1</span>
+          Global Config & Stages
+        </button>
+        <button id="tab-scenarios" onclick="switchTab('scenarios')" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <span class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[11px]">2</span>
+          Scenarios & Steps
+        </button>
+        <button id="tab-script" onclick="switchTab('script')" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <span class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[11px]">3</span>
+          test-performance-script
+        </button>
+        <button id="tab-live" onclick="switchTab('live')" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <span class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[11px]">4</span>
+          Live Execution
+          <span id="live-indicator" class="hidden w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        </button>
+        <button id="tab-reports" onclick="switchTab('reports')" class="px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/60">
+          <span class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[11px]">5</span>
+          Reports History
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+
+    <!-- ================================================================== -->
+    <!-- VIEW 1: GLOBAL CONFIG & STAGES                                     -->
+    <!-- ================================================================== -->
+    <section id="view-global" class="space-y-6">
+
+      <!-- Global Settings & Stages Card -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: General Test Metadata -->
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">1. Global Parameters</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Target environment and base URL for SOAP services</p>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-mono">Global</span>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Test Name</label>
+              <input id="input-test-name" type="text" value="Valet SOAP Performance Test"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Environment</label>
+                <select id="input-environment" onchange="onEnvironmentChange(this.value)"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                  <option value="QA1" selected>QA1</option>
+                  <option value="QA2">QA2</option>
+                  <option value="QA3">QA3</option>
+                </select>
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-300 mb-1">Base URL</label>
+                <input id="input-base-url" type="text" value="https://intserver.qa1.flashparking.dev"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-sky-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Global Stages Configuration -->
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">2. Global Stages Configuration (Duration per Stage)</h2>
+              <p class="text-xs text-slate-400 mt-0.5">The number of stages and the duration of each stage apply globally to all scenarios</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="resetDefaultStages()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition" title="Restore default stage durations">
+                ↺ Reset Defaults
+              </button>
+              <button onclick="addStage()" class="px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/30 text-xs font-semibold transition">
+                + Add Stage
+              </button>
+            </div>
+          </div>
+
+          <div id="stages-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <!-- Populated dynamically by app.js -->
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60">
+            <span>Valid duration formats: <code class="text-sky-400">30s</code>, <code class="text-sky-400">1m</code>, <code class="text-sky-400">2m30s</code></span>
+            <span id="total-duration-badge" class="font-semibold text-slate-200">Total Duration: 0s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Action Bar to proceed to Scenarios & Steps -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="text-xs text-slate-400">
+          Next step: Choose your endpoints and build your sequential execution scenarios with drag and drop.
+        </div>
+        <button onclick="switchTab('scenarios')" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-sky-500/20 transition flex items-center gap-2">
+          <span>Continue to Scenarios & Steps</span>
+          <span>→</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- VIEW 2: SCENARIOS & DRAG-AND-DROP STEPS BUILDER                     -->
+    <!-- ================================================================== -->
+    <section id="view-scenarios" class="hidden space-y-6">
+
+      <!-- Drag & Drop Scenario & Multi-Step Builder -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Left 4 Cols: Draggable Endpoint Catalog Palette -->
+        <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 lg:sticky lg:top-20">
+          <div class="border-b border-slate-800 pb-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">Endpoint Catalog</h2>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-semibold">Drag & Drop</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Drag any endpoint template below and drop it into the active Scenario on the right, or click <strong>+ Add Step</strong>.
+            </p>
+          </div>
+
+          <div id="catalog-selector-grid" class="space-y-3">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <!-- Right 8 Cols: Scenarios & Sequential Steps Builder -->
+        <div class="lg:col-span-8 space-y-5">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">Scenarios & Multi-Step Execution Flow</h2>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Select a scenario below to edit its VUs per stage and sequential steps (<code class="text-sky-400">Step 1 → Step 2 → ...</code>). Drag steps to reorder them!
+              </p>
+            </div>
+            <button onclick="addNewScenario()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition flex items-center gap-1.5">
+              <span>+ New Scenario</span>
+            </button>
+          </div>
+
+          <div id="selected-endpoints-config" class="space-y-5">
+            <!-- Scenario selector tabs and active scenario details populated dynamically by app.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Action Bar to navigate between Global Config and test-performance-script -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+        <button onclick="switchTab('global')" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+          ← Back to Global Config
+        </button>
+        <button onclick="goToScriptScreen()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-sky-500/20 transition flex items-center gap-2">
+          <span>Continue to test-performance-script</span>
+          <span>→</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- VIEW 2: test-performance-script (PRE-RUN JSON REVIEW & VALIDATION) -->
+    <!-- ================================================================== -->
+    <section id="view-script" class="hidden space-y-6">
+      <!-- Banner Header -->
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono text-xs font-bold">PRE-FLIGHT CHECK</span>
+            <h2 class="text-xl font-bold text-white font-mono tracking-tight">test-performance-script</h2>
+          </div>
+          <p class="text-xs text-slate-300 mt-1">
+            Review, modify, or export the master JSON configuration (scenarios, sequential steps, stages, VUs, <code class="text-sky-300">userGuids</code>, <code class="text-sky-300">kioskIds</code>, <code class="text-sky-300">locationIds</code>, timeouts, and assertions) that k6 will execute.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <label class="cursor-pointer px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5">
+            <span>📂 Import JSON</span>
+            <input type="file" id="import-json-input" accept=".json" class="hidden" onchange="importScriptJson(event)" />
+          </label>
+          <button onclick="exportScriptJson()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5">
+            <span>💾 Export JSON</span>
+          </button>
+          <button onclick="syncJsonFromVisualForm()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold border border-slate-700 transition">
+            ↻ Regenerate from Form
+          </button>
+        </div>
+      </div>
+
+      <!-- Validation Status Banner -->
+      <div id="validation-banner" class="rounded-2xl p-4 border bg-slate-900 border-slate-800">
+        <!-- Populated dynamically by validateCurrentEditorJson() -->
+      </div>
+
+      <!-- Split View: Visual Summary Cards + Editable JSON -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Column: Visual Summary of what will run -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2.5">
+              Confirmed Execution Summary
+            </h3>
+            <div id="script-visual-summary" class="space-y-4 text-xs">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Full JSON Editor -->
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">JSON Editor (<code class="text-sky-400">test-performance-script.json</code>)</h3>
+              <p class="text-[11px] text-slate-400">You can edit values, override ID arrays, or add steps/endpoints manually. The JSON is validated before execution.</p>
+            </div>
+            <button onclick="validateCurrentEditorJson()" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+              ✓ Validate JSON Now
+            </button>
+          </div>
+
+          <textarea id="json-editor-textarea" rows="24" spellcheck="false"
+            oninput="onJsonEditorInput()"
+            class="code-editor w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-emerald-300 focus:outline-none focus:border-sky-500 custom-scrollbar leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <!-- Bottom Launch Bar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+        <button onclick="switchTab('scenarios')" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+          ← Back to Scenarios & Steps
+        </button>
+
+        <div class="flex items-center gap-3">
+          <span id="launch-hint" class="text-xs text-slate-400">The JSON must be valid to launch the k6 performance test.</span>
+          <button id="btn-start-test" onclick="startPerformanceTest()"
+            class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-emerald-500/20 transition flex items-center gap-2">
+            <span>▶ Run Performance Test</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- VIEW 3: LIVE EXECUTION DASHBOARD                                   -->
+    <!-- ================================================================== -->
+    <section id="view-live" class="hidden space-y-6">
+
+      <!-- Run Status Header -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-3">
+            <span id="run-status-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-800 text-slate-300">
+              IDLE
+            </span>
+            <h2 id="run-title-display" class="text-lg font-bold text-white font-mono">No active execution</h2>
+          </div>
+          <p id="run-subtitle-display" class="text-xs text-slate-400">
+            Start a test from the <code class="text-sky-400">test-performance-script</code> tab to view real-time metrics.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right mr-2">
+            <div class="text-[11px] text-slate-400 uppercase">Elapsed Time</div>
+            <div id="run-elapsed-display" class="text-base font-bold font-mono text-sky-400">0s / 0s</div>
+          </div>
+          <button id="btn-stop-test" onclick="stopPerformanceTest()" disabled
+            class="px-4 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-rose-300 border border-rose-500/30 text-xs font-bold transition">
+            ⏹ Stop Test
+          </button>
+        </div>
+      </div>
+
+      <!-- Completed Run Reports Banner (Shown when run finishes) -->
+      <div id="live-reports-ready-banner" class="hidden bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold text-emerald-300 flex items-center gap-2">
+              <span>✅ HTML Reports Generated Successfully</span>
+            </h3>
+            <p class="text-xs text-slate-300 mt-0.5">Click any of the reports below to inspect latency percentiles (<code class="text-emerald-300">p50</code>, <code class="text-emerald-300">p90</code>, <code class="text-emerald-300">p95</code>, <code class="text-emerald-300">p99</code>), HTTP timing breakdown, scenarios, stages, and IDs used.</p>
+          </div>
+        </div>
+        <div id="live-reports-links" class="flex flex-wrap gap-2.5 pt-1">
+          <!-- Populated dynamically when test completes -->
+        </div>
+      </div>
+
+      <!-- Live KPI Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div class="text-[11px] font-semibold uppercase text-slate-400">Active VUs (Current)</div>
+          <div id="live-kpi-vus" class="text-2xl font-bold text-sky-400 mt-1 font-mono">0</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div class="text-[11px] font-semibold uppercase text-emerald-400">Requests Right Now (1s)</div>
+          <div id="live-kpi-rps" class="text-2xl font-bold text-emerald-400 mt-1 font-mono">0 req/s</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div class="text-[11px] font-semibold uppercase text-slate-400">Total Cumulative Requests</div>
+          <div id="live-kpi-reqs" class="text-2xl font-bold text-white mt-1 font-mono">0</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div class="text-[11px] font-semibold uppercase text-slate-400">SOAP Errors / Failures</div>
+          <div id="live-kpi-errors" class="text-2xl font-bold text-emerald-400 mt-1 font-mono">0</div>
+        </div>
+      </div>
+
+      <!-- Live Charts Grid: 3 Real-Time Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Full Width Prominent Chart: Requests Being Executed Right Now -->
+        <div class="lg:col-span-12 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                ⚡ Requests Being Executed Right Now (Real-Time Request Volume per Second — Total & By Endpoint)
+              </h3>
+              <p class="text-[11px] text-slate-400">Shows the exact number of requests occurring at each second across all active scenarios and per endpoint</p>
+            </div>
+          </div>
+          <div class="h-64">
+            <canvas id="chart-requests-now"></canvas>
+          </div>
+        </div>
+
+        <!-- Bottom Left Chart: Active Virtual Users & Throughput -->
+        <div class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
+            👥 Active Virtual Users (VUs) & Throughput
+          </h3>
+          <div class="h-64">
+            <canvas id="chart-throughput"></canvas>
+          </div>
+        </div>
+
+        <!-- Bottom Right Chart: Latency Percentiles -->
+        <div class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
+            ⏱️ Real-Time Latency — p50 (Median), p95, p99 & Average (ms)
+          </h3>
+          <div class="h-64">
+            <canvas id="chart-latency"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-Endpoint Live & Final Summary Breakdown Table -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">
+            Cumulative Live & Final Metrics by Endpoint (p50, p90, p95, p99, Avg)
+          </h3>
+          <span class="text-[11px] text-slate-400">Updates every second during execution and locks to exact k6 summary upon completion</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                <th class="py-2.5 px-3">Endpoint</th>
+                <th class="py-2.5 px-3">Requests</th>
+                <th class="py-2.5 px-3">Errors</th>
+                <th class="py-2.5 px-3">Max VUs Seen</th>
+                <th class="py-2.5 px-3 text-sky-400">p50 (Median)</th>
+                <th class="py-2.5 px-3 text-indigo-400">p90</th>
+                <th class="py-2.5 px-3 text-amber-400">p95</th>
+                <th class="py-2.5 px-3 text-rose-400">p99</th>
+                <th class="py-2.5 px-3">Average (Avg)</th>
+              </tr>
+            </thead>
+            <tbody id="live-endpoints-tbody" class="divide-y divide-slate-800/60 font-mono">
+              <tr>
+                <td colspan="9" class="py-4 text-center text-slate-500 font-sans">No active test data yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Live Console Output -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Live k6 Console</h3>
+          <button onclick="clearLiveConsole()" class="text-xs text-slate-400 hover:text-white">Clear console</button>
+        </div>
+        <pre id="live-console-output" class="code-editor bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 h-64 overflow-y-auto custom-scrollbar leading-relaxed">Waiting for k6 execution...</pre>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- VIEW 4: HISTORICAL REPORTS                                         -->
+    <!-- ================================================================== -->
+    <section id="view-reports" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-white">Test Run History & HTML Reports</h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Each run is stored in its own timestamped folder (<code class="text-sky-400">reports/run-YYYY-MM-DD_HH-mm-ss/</code>) containing the general report, per-endpoint HTML reports, and the exact executed JSON script.
+          </p>
+        </div>
+        <button onclick="loadReportsHistory()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-sky-400 border border-slate-700 transition">
+          ↻ Refresh History
+        </button>
+      </div>
+
+      <div id="reports-history-container" class="space-y-4">
+        <!-- Populated dynamically by loadReportsHistory() -->
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

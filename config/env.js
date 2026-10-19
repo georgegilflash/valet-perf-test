@@ -96,7 +96,7 @@ export const config = {
     knownDriversFrom: __ENV.KNOWN_DRIVERS_FROM || null,
     knownDriversFromMin: __ENV.KNOWN_DRIVERS_FROM_MIN || '2026-01-01T00:00:00',
     knownDriversFromMax: __ENV.KNOWN_DRIVERS_FROM_MAX || '2026-08-27T00:00:00',
-    knownDriversStart: parseInt(__ENV.KNOWN_DRIVERS_START || '1', 10),
+    knownDriversStart: parseInt(__ENV.KNOWN_DRIVERS_START || '0', 10),
     knownDriversCount: __ENV.KNOWN_DRIVERS_COUNT ? parseInt(__ENV.KNOWN_DRIVERS_COUNT, 10) : null,
     knownDriversCountMin: parseInt(__ENV.KNOWN_DRIVERS_COUNT_MIN || '1', 10),
     knownDriversCountMax: parseInt(__ENV.KNOWN_DRIVERS_COUNT_MAX || '100', 10),

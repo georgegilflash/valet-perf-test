@@ -1,0 +1,17 @@
+services:
+  webv1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: valet-k6-webv1
+    ports:
+      - "3000:3000"
+    volumes:
+      - valet_reports:/app/reports
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+    restart: unless-stopped
+
+volumes:
+  valet_reports:

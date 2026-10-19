@@ -55,10 +55,18 @@ valet/
 ├── .env                    # Local environment configuration file
 ├── .gitignore              # Ignores sensitive .env files and test reports
 ├── package.json            # Convenient npm scripts
+├── webv1/                  # Valet Performance Testing Studio (Web UI + Docker)
+│   ├── docker-compose.yml  # Dockerized runner with live volume mounts
+│   ├── Dockerfile          # Node.js 20 + Grafana k6 container
+│   ├── src/                # Web UI, endpoint catalog, validator, SSE telemetry
+│   ├── reports/            # Historical test reports (HTML, JSON, logs)
+│   └── README.md           # Detailed Web Studio documentation
 ├── main.js                 # Primary Valet test entry point
 ├── main-device.js          # Primary Device Services test entry point (Kiosk/PMS/Sign)
 └── README.md               # Documentation
 ```
+
+> 💡 **Looking for the Web UI?** Check out [webv1/README.md](file:///c:/Users/george.gil/Documents/valet/webv1/README.md) for the Dockerized drag-and-drop studio, live telemetry dashboard, and HTML reporting engine.
 
 ---
 
