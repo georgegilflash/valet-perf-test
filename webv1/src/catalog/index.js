@@ -4,6 +4,7 @@ import { callKioskGetKnownDriversTemplate } from './callKioskGetKnownDrivers.tem
 import { callKioskGetKnownDriverChangesTemplate } from './callKioskGetKnownDriverChanges.template.js';
 import { callKioskIssueTicket2Template } from './callKioskIssueTicket2.template.js';
 import { callKioskGetTicketTemplate } from './callKioskGetTicket.template.js';
+import { callKioskCompleteTicket1Template } from './callKioskCompleteTicket1.template.js';
 import { callPaymentsNewMessagesTemplate } from './callPaymentsNewMessages.template.js';
 import { callSignNewMessagesTemplate } from './callSignNewMessages.template.js';
 import { callValetNewMessages4Template } from './callValetNewMessages4.template.js';
@@ -19,6 +20,7 @@ export const ENDPOINT_CATALOG = [
   callKioskGetKnownDriverChangesTemplate,
   callKioskIssueTicket2Template,
   callKioskGetTicketTemplate,
+  callKioskCompleteTicket1Template,
   callPaymentsNewMessagesTemplate,
   callSignNewMessagesTemplate,
   callValetNewMessages4Template,

@@ -428,6 +428,11 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
 
         const level = isStderr ? 'error' : 'info';
         appendLog(trimmed, level);
+        if (isStderr) {
+          console.error(trimmed);
+        } else {
+          console.log(trimmed);
+        }
       }
     };
 

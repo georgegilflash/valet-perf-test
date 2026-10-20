@@ -510,15 +510,27 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
     effectiveGlobalThresholds
   );
 
+  // Detect configuration / unreachable host errors (e.g. DNS failure, invalid domain, connection refused)
+  // When domain does not exist or host is unreachable, 100% of requests fail with 0 data received or failedReqs === totalReqs
+  const isHostUnreachable = totalReqs > 0 && (failedReqs === totalReqs) && (dataReceived === 0 || globalTimings.duration.avg < 15);
+
   // Check if any individual endpoint failed its SLA threshold
   const anyEndpointFailed = endpointMetricsList.some((ep) => {
     const res = evaluateThresholds(ep.timings.duration, ep.errorRatePct, ep.thresholds, globalCfg.thresholds);
     return !res.passed;
   });
 
-  const overallPassed = globalEval.passed && !anyEndpointFailed;
-  const statusColor = overallPassed ? '#10b981' : '#ef4444';
-  const statusBadge = overallPassed ? 'PASSED' : 'SLA THRESHOLD EXCEEDED';
+  const overallPassed = !isHostUnreachable && globalEval.passed && !anyEndpointFailed;
+  let statusColor = '#10b981';
+  let statusBadge = 'PASSED';
+
+  if (isHostUnreachable) {
+    statusColor = '#ef4444';
+    statusBadge = 'CONFIG ERROR: HOST UNREACHABLE';
+  } else if (!overallPassed) {
+    statusColor = '#f59e0b';
+    statusBadge = 'SLA THRESHOLD EXCEEDED';
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -584,21 +596,31 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
     </div>
 
     ${
-      !overallPassed
-        ? `<div class="section" style="border-left: 5px solid #ef4444; background: #450a0a22;">
-            <div class="section-title" style="color:#f87171;">⚠️ SLA Threshold Status / Violations</div>
-            <ul style="margin:0; padding-left:20px; color:#fca5a5; font-size:13px; line-height:1.7;">
-              ${globalEval.violations.map((v) => `<li>[Global] ${escapeHtml(v)}</li>`).join('')}
-              ${endpointMetricsList
-                .map((ep) => {
-                  const r = evaluateThresholds(ep.timings.duration, ep.errorRatePct, ep.thresholds, globalCfg.thresholds);
-                  return r.violations.map((v) => `<li>[${escapeHtml(ep.name)}] ${escapeHtml(v)}</li>`).join('');
-                })
-                .filter(Boolean)
-                .join('')}
-            </ul>
+      isHostUnreachable
+        ? `<div class="section" style="border-left: 5px solid #ef4444; background: #450a0a33;">
+            <div class="section-title" style="color:#f87171;">🚫 Infrastructure / Host Error (Not an SLA Timeout)</div>
+            <p style="color:#fca5a5; font-size:13px; margin:0 0 8px 0; line-height:1.6;">
+              <strong>Host is unreachable or domain could not be resolved.</strong> 100% of the requests failed immediately with no valid HTTP response from <code>${escapeHtml(globalCfg.baseUrl)}</code>.
+            </p>
+            <p style="color:#cbd5e1; font-size:12px; margin:0;">
+              Please verify that the host domain name is typed correctly, that DNS resolution succeeds, and that the server port is accepting connections.
+            </p>
           </div>`
-        : ''
+        : (!overallPassed
+            ? `<div class="section" style="border-left: 5px solid #f59e0b; background: #451a0333;">
+                <div class="section-title" style="color:#fbbf24;">⚠️ SLA Threshold Status / Violations</div>
+                <ul style="margin:0; padding-left:20px; color:#fde68a; font-size:13px; line-height:1.7;">
+                  ${globalEval.violations.map((v) => `<li>[Global] ${escapeHtml(v)}</li>`).join('')}
+                  ${endpointMetricsList
+                    .map((ep) => {
+                      const r = evaluateThresholds(ep.timings.duration, ep.errorRatePct, ep.thresholds, globalCfg.thresholds);
+                      return r.violations.map((v) => `<li>[${escapeHtml(ep.name)}] ${escapeHtml(v)}</li>`).join('');
+                    })
+                    .filter(Boolean)
+                    .join('')}
+                </ul>
+              </div>`
+            : '')
     }
 
     <div class="section">
@@ -869,7 +891,11 @@ export function generateMultiReports(data, scriptConfig, outputDir, runTimestamp
     };
   });
 
-  const allThresholdsPassed = globalEvalSummary.passed && endpointsSummary.every((ep) => ep.thresholdsPassed);
+  const isHostUnreachableSummary = data.metrics?.http_reqs?.values?.count > 0 &&
+    (data.metrics?.http_req_failed?.values?.passes === data.metrics?.http_reqs?.values?.count) &&
+    ((data.metrics?.data_received?.values?.count || 0) === 0 || globalTimingsDuration.avg < 15);
+
+  const allThresholdsPassed = !isHostUnreachableSummary && globalEvalSummary.passed && endpointsSummary.every((ep) => ep.thresholdsPassed);
 
   outputs[`${cleanDir}/raw-summary.json`] = JSON.stringify(
     {
@@ -880,6 +906,8 @@ export function generateMultiReports(data, scriptConfig, outputDir, runTimestamp
       scenarios: scriptConfig.scenarios || [],
       thresholdResults: {
         passed: allThresholdsPassed,
+        failureType: isHostUnreachableSummary ? 'CONFIG_ERROR' : (!allThresholdsPassed ? 'SLA_EXCEEDED' : null),
+        isHostUnreachable: isHostUnreachableSummary,
         globalPassed: globalEvalSummary.passed,
         globalViolations: globalEvalSummary.violations,
         globalLimits: globalEvalSummary.limits,

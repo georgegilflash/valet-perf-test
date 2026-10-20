@@ -93,7 +93,11 @@ import {
   clearLiveConsole
 } from './modules/live.view.js';
 
-import { loadReportsHistory } from './modules/reports.view.js';
+import {
+  loadReportsHistory,
+  deleteSingleReport,
+  clearAllReportsHistory
+} from './modules/reports.view.js';
 
 // ============================================================================
 // TAB NAVIGATION & ENVIRONMENT HANDLERS
@@ -236,7 +240,9 @@ Object.assign(window, {
   clearLiveConsole,
 
   // Reports View
-  loadReportsHistory
+  loadReportsHistory,
+  deleteSingleReport,
+  clearAllReportsHistory
 });
 
 // ============================================================================

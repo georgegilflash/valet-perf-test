@@ -207,6 +207,24 @@ export function buildSoapEnvelope(endpointConfig, selectedIdValue, context = {})
 </soap12:Envelope>`;
   }
 
+  // Specific handler for CompleteTicket1 (SOAP 1.2)
+  if (opName === 'CompleteTicket1' || endpointConfig.id === 'callKioskCompleteTicket1') {
+    const ticketID = context?.ticketID || endpointConfig.data?.ticketID || '';
+    const nowIso = new Date().toISOString().slice(0, 19);
+    const calledAt = endpointConfig.data?.calledAt || nowIso;
+
+    return `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <CompleteTicket1 xmlns="http://kleverlogic.com/webservices/">
+      <kioskID>${selectedIdValue || ''}</kioskID>
+      <calledAt>${calledAt}</calledAt>
+      <ticketID>${ticketID}</ticketID>
+    </CompleteTicket1>
+  </soap12:Body>
+</soap12:Envelope>`;
+  }
+
   // Specific handler for Valet NewMessages4 (SOAP 1.1 / 1.2)
   if (opName === 'NewMessages4' || endpointConfig.id === 'callValetNewMessages4') {
     const compressed = endpointConfig.data?.compressed !== undefined ? endpointConfig.data.compressed : 'true';

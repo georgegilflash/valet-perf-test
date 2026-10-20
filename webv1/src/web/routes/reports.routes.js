@@ -70,7 +70,8 @@ export function createReportsRouter(reportsDir) {
             p95: Number(avgP95.toFixed(2)),
             p99: Number(avgP99.toFixed(2)),
             avg: Number(avgDur.toFixed(2)),
-            thresholdsPassed: thresholdResults ? thresholdResults.passed : null
+            thresholdsPassed: thresholdResults ? thresholdResults.passed : null,
+            failureType: thresholdResults?.failureType || null
           };
         } else if (rawSummary?.metrics?.http_req_duration?.values) {
           const httpReqs = rawSummary?.metrics?.http_reqs?.values?.count ?? null;
@@ -82,7 +83,8 @@ export function createReportsRouter(reportsDir) {
             p95: httpDurValues['p(95)'] ? Number(httpDurValues['p(95)'].toFixed(2)) : null,
             p99: httpDurValues['p(99)'] ? Number(httpDurValues['p(99)'].toFixed(2)) : null,
             avg: httpDurValues.avg ? Number(httpDurValues.avg.toFixed(2)) : null,
-            thresholdsPassed: thresholdResults ? thresholdResults.passed : null
+            thresholdsPassed: thresholdResults ? thresholdResults.passed : null,
+            failureType: thresholdResults?.failureType || null
           };
         }
 
@@ -118,6 +120,42 @@ export function createReportsRouter(reportsDir) {
     try {
       const content = JSON.parse(fs.readFileSync(scriptFile, 'utf-8'));
       res.json(content);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE /api/reports/:runId - Delete a specific historical report run
+  router.delete('/reports/:runId', (req, res) => {
+    try {
+      const safeRunId = path.basename(req.params.runId);
+      const targetDir = path.join(reportsDir, safeRunId);
+      if (!fs.existsSync(targetDir)) {
+        return res.status(404).json({ error: `Report ${safeRunId} not found.` });
+      }
+      fs.rmSync(targetDir, { recursive: true, force: true });
+      res.json({ success: true, deleted: safeRunId });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE /api/reports - Clear all historical test runs (keeps latest if needed)
+  router.delete('/reports', (req, res) => {
+    try {
+      if (!fs.existsSync(reportsDir)) {
+        return res.json({ success: true, deletedCount: 0 });
+      }
+      const entries = fs.readdirSync(reportsDir, { withFileTypes: true });
+      let deletedCount = 0;
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const folderPath = path.join(reportsDir, entry.name);
+          fs.rmSync(folderPath, { recursive: true, force: true });
+          deletedCount++;
+        }
+      }
+      res.json({ success: true, deletedCount });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -569,9 +569,14 @@
             Each run is stored in its own timestamped folder (<code class="text-sky-400">reports/run-YYYY-MM-DD_HH-mm-ss/</code>) containing the general report, per-endpoint HTML reports, and the exact executed JSON script.
           </p>
         </div>
-        <button onclick="loadReportsHistory()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-sky-400 border border-slate-700 transition">
-          ↻ Refresh History
-        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="clearAllReportsHistory()" class="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 border border-rose-500/30 transition flex items-center gap-1.5">
+            <span>🗑️ Clear All Reports</span>
+          </button>
+          <button onclick="loadReportsHistory()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-sky-400 border border-slate-700 transition">
+            ↻ Refresh History
+          </button>
+        </div>
       </div>
 
       <div id="reports-history-container" class="space-y-4">

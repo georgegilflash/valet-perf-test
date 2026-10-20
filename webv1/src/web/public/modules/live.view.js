@@ -150,60 +150,55 @@ export function initCharts() {
   const ctxStatus = document.getElementById('chart-status-codes')?.getContext('2d');
   if (ctxStatus) {
     state.charts.statusCodes = new Chart(ctxStatus, {
-      type: 'bar',
+      type: 'line',
       data: {
         labels: [],
         datasets: [
           {
-            type: 'line',
             label: 'Error Rate (%)',
             data: [],
             yAxisID: 'yRate',
             borderColor: '#f43f5e',
-            backgroundColor: 'rgba(244, 63, 94, 0.1)',
+            backgroundColor: 'rgba(244, 63, 94, 0.12)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: '200 OK (req/s)',
+            data: [],
+            yAxisID: 'yCount',
+            borderColor: '#10b981',
+            backgroundColor: 'transparent',
+            borderWidth: 1.8,
+            tension: 0.3
+          },
+          {
+            label: '4xx Client Error (req/s)',
+            data: [],
+            yAxisID: 'yCount',
+            borderColor: '#fbbf24',
+            backgroundColor: 'transparent',
+            borderWidth: 1.8,
+            tension: 0.3
+          },
+          {
+            label: '5xx Server Error (req/s)',
+            data: [],
+            yAxisID: 'yCount',
+            borderColor: '#ef4444',
+            backgroundColor: 'transparent',
             borderWidth: 2,
-            tension: 0.2,
-            order: 1
+            tension: 0.3
           },
           {
-            type: 'bar',
-            label: '200 OK',
+            label: 'SOAP Fault / Other (req/s)',
             data: [],
             yAxisID: 'yCount',
-            backgroundColor: '#10b981',
-            borderRadius: 4,
-            stack: 'statusStack',
-            order: 2
-          },
-          {
-            type: 'bar',
-            label: '4xx Client Error',
-            data: [],
-            yAxisID: 'yCount',
-            backgroundColor: '#fbbf24',
-            borderRadius: 4,
-            stack: 'statusStack',
-            order: 2
-          },
-          {
-            type: 'bar',
-            label: '5xx Server Error',
-            data: [],
-            yAxisID: 'yCount',
-            backgroundColor: '#ef4444',
-            borderRadius: 4,
-            stack: 'statusStack',
-            order: 2
-          },
-          {
-            type: 'bar',
-            label: 'SOAP Fault / Other',
-            data: [],
-            yAxisID: 'yCount',
-            backgroundColor: '#a855f7',
-            borderRadius: 4,
-            stack: 'statusStack',
-            order: 2
+            borderColor: '#a855f7',
+            backgroundColor: 'transparent',
+            borderWidth: 1.8,
+            tension: 0.3
           }
         ]
       },
@@ -216,11 +211,10 @@ export function initCharts() {
           tooltip: { mode: 'index', intersect: false }
         },
         scales: {
-          x: { stacked: true, ticks: { color: '#64748b', maxTicksLimit: 12 }, grid: { color: '#1e293b' } },
+          x: { ticks: { color: '#64748b', maxTicksLimit: 12 }, grid: { color: '#1e293b' } },
           yCount: {
             type: 'linear',
             position: 'left',
-            stacked: true,
             beginAtZero: true,
             ticks: { color: '#94a3b8', precision: 0 },
             grid: { color: '#1e293b' },
