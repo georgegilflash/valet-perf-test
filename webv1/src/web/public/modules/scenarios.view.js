@@ -31,7 +31,7 @@ export async function loadCatalogAndPools() {
     const res = await fetch('/api/catalog');
     const data = await res.json();
     state.catalog = data.catalog || [];
-    state.pools = data.pools || { locationIds: [], kioskIds: [], userGuids: [] };
+    state.pools = data.pools || { locationIds: [], locationIdsQa3: [], kioskIds: [], userGuids: [] };
 
     state.catalog.forEach((tpl) => {
       const primaryPool = tpl.dataRequirements?.primaryIdPool;
@@ -62,6 +62,9 @@ export async function loadCatalogAndPools() {
         xmlNamespace: tpl.xmlNamespace || 'http://tempuri.org/',
         timeout: tpl.defaultTimeout || '60s',
         thinkTimeSec: tpl.defaultThinkTimeSec ?? 1.0,
+        thinkTimeRange: tpl.defaultThinkTimeRange
+          ? JSON.parse(JSON.stringify(tpl.defaultThinkTimeRange))
+          : { enabled: true, min: tpl.defaultThinkTimeSec ?? 1.0, max: (tpl.defaultThinkTimeSec ?? 1.0) + 2.0 },
         usersPerStage: alignedUsersPerStage,
         dataRequirements: JSON.parse(JSON.stringify(tpl.dataRequirements || {})),
         data: {
@@ -521,6 +524,13 @@ export function renderSelectedEndpointsConfig() {
                     <span id="step-id-badge-${sc.id}-${stepIdx}" class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-mono">
                       ${currentIds.length} IDs (${escapeHtml(step.data?.selectionMode || 'random')})
                     </span>
+                    <span class="px-2 py-0.5 rounded bg-slate-800/80 text-emerald-400 border border-slate-700/60 text-[11px] font-mono" title="Think time">
+                      ⏱ ${
+                        step.thinkTimeRange?.enabled
+                          ? `${step.thinkTimeRange.min ?? 1}-${step.thinkTimeRange.max ?? 3}s (rand)`
+                          : `${step.thinkTimeSec ?? 1}s`
+                      }
+                    </span>
                   </div>
 
                   <!-- Step Action Buttons -->
@@ -549,25 +559,66 @@ export function renderSelectedEndpointsConfig() {
 
                 <!-- Collapsible Step Configuration Drawer -->
                 <div class="${step.drawerOpen ? 'block' : 'hidden'} pt-3 border-t border-slate-800/90 space-y-4">
-                  <!-- Timeout, Think Time, SLA p95 -->
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
-                      <label class="block text-[10px] text-slate-400">Step Timeout (e.g. 60s)</label>
-                      <input type="text" value="${escapeHtml(step.timeout)}"
-                        oninput="updateStepField('${sc.id}', ${stepIdx}, 'timeout', this.value)"
-                        class="w-full bg-transparent text-xs font-mono text-white focus:outline-none" />
-                    </div>
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
-                      <label class="block text-[10px] text-slate-400">Think Time After Step (s)</label>
-                      <input type="number" step="0.1" min="0" value="${step.thinkTimeSec}"
-                        oninput="updateStepField('${sc.id}', ${stepIdx}, 'thinkTimeSec', parseFloat(this.value) || 0)"
-                        class="w-full bg-transparent text-xs font-mono text-emerald-300 focus:outline-none" />
-                    </div>
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
-                      <label class="block text-[10px] text-slate-400">Threshold p95 (ms)</label>
-                      <input type="number" step="100" min="100" value="${step.thresholds?.p95MaxDurationMs ?? 5000}"
-                        oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p95MaxDurationMs', parseInt(this.value, 10) || 1000)"
-                        class="w-full bg-transparent text-xs font-mono text-amber-300 focus:outline-none" />
+                  <!-- Timeout, Think Time & SLA p95 -->
+                  <div class="space-y-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                        <label class="block text-[10px] text-slate-400">Step Timeout (e.g. 60s)</label>
+                        <input type="text" value="${escapeHtml(step.timeout)}"
+                          oninput="updateStepField('${sc.id}', ${stepIdx}, 'timeout', this.value)"
+                          class="w-full bg-transparent text-xs font-mono text-white focus:outline-none" />
+                      </div>
+                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                        <div class="flex items-center justify-between mb-1">
+                          <label class="block text-[10px] text-slate-400">Think Time</label>
+                          <label class="flex items-center gap-1 cursor-pointer select-none" title="Toggle between fixed think time and randomizer range">
+                            <input type="checkbox" ${step.thinkTimeRange?.enabled ? 'checked' : ''}
+                              onchange="toggleStepThinkTimeRandomizer('${sc.id}', ${stepIdx}, this.checked)"
+                              class="rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0 text-[10px] scale-90 cursor-pointer" />
+                            <span class="text-[9px] font-semibold ${step.thinkTimeRange?.enabled ? 'text-sky-300 font-bold' : 'text-slate-400'}">Random Range</span>
+                          </label>
+                        </div>
+                        ${
+                          step.thinkTimeRange?.enabled
+                            ? `
+                          <div class="flex items-center gap-2">
+                            <div class="flex-1 min-w-0">
+                              <span class="block text-[8px] text-slate-400 font-mono">MIN (s)</span>
+                              <input type="number" step="0.1" min="0" value="${step.thinkTimeRange?.min ?? step.thinkTimeSec ?? 1.0}"
+                                oninput="updateStepThinkMinMax('${sc.id}', ${stepIdx}, 'min', this.value)"
+                                placeholder="Min"
+                                title="Minimum think time in seconds"
+                                class="w-full bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-sky-500 text-center" />
+                            </div>
+                            <span class="text-slate-500 text-xs font-mono pt-3">-</span>
+                            <div class="flex-1 min-w-0">
+                              <span class="block text-[8px] text-slate-400 font-mono">MAX (s)</span>
+                              <input type="number" step="0.1" min="0" value="${step.thinkTimeRange?.max ?? (step.thinkTimeSec ?? 1.0) + 2.0}"
+                                oninput="updateStepThinkMinMax('${sc.id}', ${stepIdx}, 'max', this.value)"
+                                placeholder="Max"
+                                title="Maximum think time in seconds"
+                                class="w-full bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-sky-500 text-center" />
+                            </div>
+                          </div>
+                        `
+                            : `
+                          <div>
+                            <span class="block text-[8px] text-slate-400 font-mono">FIXED (s)</span>
+                            <input type="number" step="0.1" min="0" value="${step.thinkTimeSec ?? 1.0}"
+                              oninput="updateStepFixedThinkTime('${sc.id}', ${stepIdx}, this.value)"
+                              placeholder="1.0"
+                              title="Fixed think time in seconds"
+                              class="w-full bg-transparent text-xs font-mono text-emerald-300 focus:outline-none" />
+                          </div>
+                        `
+                        }
+                      </div>
+                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                        <label class="block text-[10px] text-slate-400">Threshold p95 (ms)</label>
+                        <input type="number" step="100" min="100" value="${step.thresholds?.p95MaxDurationMs ?? 5000}"
+                          oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p95MaxDurationMs', parseInt(this.value, 10) || 1000)"
+                          class="w-full bg-transparent text-xs font-mono text-amber-300 focus:outline-none" />
+                      </div>
                     </div>
                   </div>
 
@@ -820,6 +871,58 @@ export function renderSelectedEndpointsConfig() {
   `;
 
   container.innerHTML = scenarioTabsHtml + activeScenarioCardHtml;
+}
+
+export function toggleStepThinkTimeRandomizer(scenarioId, stepIdx, checked) {
+  const sc = state.scenarios.find((s) => s.id === scenarioId);
+  if (!sc || !sc.steps[stepIdx]) return;
+  const isEnabled = Boolean(checked);
+  const curVal = sc.steps[stepIdx].thinkTimeSec ?? 1.0;
+  if (!sc.steps[stepIdx].thinkTimeRange) {
+    sc.steps[stepIdx].thinkTimeRange = { enabled: isEnabled, min: curVal, max: curVal + 2.0 };
+  } else {
+    sc.steps[stepIdx].thinkTimeRange.enabled = isEnabled;
+  }
+  renderSelectedEndpointsConfig();
+}
+
+export function updateStepFixedThinkTime(scenarioId, stepIdx, val) {
+  const sc = state.scenarios.find((s) => s.id === scenarioId);
+  if (!sc || !sc.steps[stepIdx]) return;
+  const num = Math.max(0, parseFloat(val) || 0);
+  sc.steps[stepIdx].thinkTimeSec = num;
+  if (sc.steps[stepIdx].thinkTimeRange) {
+    sc.steps[stepIdx].thinkTimeRange.min = num;
+  }
+}
+
+export function updateStepThinkMinMax(scenarioId, stepIdx, field, val) {
+  const sc = state.scenarios.find((s) => s.id === scenarioId);
+  if (!sc || !sc.steps[stepIdx]) return;
+  const num = Math.max(0, parseFloat(val) || 0);
+  if (!sc.steps[stepIdx].thinkTimeRange) {
+    const curVal = sc.steps[stepIdx].thinkTimeSec ?? 1.0;
+    sc.steps[stepIdx].thinkTimeRange = { enabled: true, min: curVal, max: curVal + 2.0 };
+  }
+  sc.steps[stepIdx].thinkTimeRange[field] = num;
+  if (field === 'min') {
+    sc.steps[stepIdx].thinkTimeSec = num;
+  }
+}
+
+export function updateStepThinkTimeRange(scenarioId, stepIdx, field, val) {
+  const sc = state.scenarios.find((s) => s.id === scenarioId);
+  if (!sc || !sc.steps[stepIdx]) return;
+  if (!sc.steps[stepIdx].thinkTimeRange) {
+    const curVal = sc.steps[stepIdx].thinkTimeSec ?? 1.0;
+    sc.steps[stepIdx].thinkTimeRange = { enabled: false, min: curVal, max: curVal + 2.0 };
+  }
+  if (field === 'enabled') {
+    sc.steps[stepIdx].thinkTimeRange.enabled = Boolean(val);
+    renderSelectedEndpointsConfig();
+  } else {
+    sc.steps[stepIdx].thinkTimeRange[field] = Math.max(0, parseFloat(val) || 0);
+  }
 }
 
 export function updateStepField(scenarioId, stepIdx, field, val) {

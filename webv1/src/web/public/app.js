@@ -52,6 +52,9 @@ import {
   updateStepSelectionMode,
   updateStepIdList,
   loadDefaultIdsForStep,
+  toggleStepThinkTimeRandomizer,
+  updateStepFixedThinkTime,
+  updateStepThinkMinMax,
   getSavedLayouts,
   saveLayoutsList,
   saveCurrentLayoutPrompt,
@@ -189,6 +192,9 @@ Object.assign(window, {
   updateStepSelectionMode,
   updateStepIdList,
   loadDefaultIdsForStep,
+  toggleStepThinkTimeRandomizer,
+  updateStepFixedThinkTime,
+  updateStepThinkMinMax,
 
   // Layouts & History Modals
   getSavedLayouts,

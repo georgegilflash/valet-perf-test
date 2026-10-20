@@ -19,6 +19,7 @@ export const state = {
   catalog: [],
   pools: {
     locationIds: [],
+    locationIdsQa3: [],
     kioskIds: [],
     userGuids: []
   },

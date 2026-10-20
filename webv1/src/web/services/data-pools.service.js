@@ -23,6 +23,7 @@ export function loadDataPools(dataDir) {
 
   return {
     locationIds: readPool('location-ids.json'),
+    locationIdsQa3: readPool('location-ids-qa3.json'),
     kioskIds: readPool('kiosk-ids.json'),
     userGuids: readPool('user-guids.json')
   };

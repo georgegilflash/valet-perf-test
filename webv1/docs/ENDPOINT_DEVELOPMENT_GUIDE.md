@@ -157,7 +157,16 @@ This guarantees that:
 
 ## 3. UI Integration & Configuration Drawer (`scenarios.view.js`)
 
-### Step 3.1: Automatic Step Pairing
+### Step 3.1: Think Time & Randomizer Range (Min-Max)
+
+Every step in a scenario supports either a fixed think time or a randomized range:
+- `step.thinkTimeSec`: Fixed seconds to sleep after step completion (default: `1.0`).
+- `step.thinkTimeRange`: `{ enabled: boolean, min: number, max: number }`. When enabled, k6 will sleep a uniform random interval between `min` and `max` seconds after each request for every VU iteration.
+- The step drawer includes a **"Random Range"** toggle with dedicated `min` and `max` inputs.
+
+---
+
+### Step 3.2: Automatic Step Pairing
 When an action naturally pairs with a verification step (like `IssueTicket2` followed by `GetTicket`), handle this in `addStepToScenario(scenarioId, endpointId, insertIndex)`:
 
 ```javascript

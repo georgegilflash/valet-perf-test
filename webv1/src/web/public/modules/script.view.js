@@ -32,6 +32,7 @@ export function buildScriptJsonFromState() {
       xmlNamespace: st.xmlNamespace,
       timeout: st.timeout,
       thinkTimeSec: st.thinkTimeSec,
+      thinkTimeRange: st.thinkTimeRange ? JSON.parse(JSON.stringify(st.thinkTimeRange)) : null,
       data: JSON.parse(JSON.stringify(st.data)),
       thresholds: JSON.parse(JSON.stringify(st.thresholds)),
       assertions: JSON.parse(JSON.stringify(st.assertions))
@@ -220,6 +221,12 @@ export function renderScriptVisualSummary(scriptObj, summary) {
               <div class="flex items-center gap-1.5 text-[10px] font-mono">
                 <span class="text-emerald-300">${idsCount} IDs</span>
                 <span class="text-slate-500">·</span>
+                <span class="text-sky-300">⏱ ${
+                  st.thinkTimeRange?.enabled
+                    ? `${st.thinkTimeRange.min ?? 1}-${st.thinkTimeRange.max ?? 3}s (rand)`
+                    : `${st.thinkTimeSec ?? 1}s`
+                }</span>
+                <span class="text-slate-500">·</span>
                 <span class="text-amber-300">SLA p95 &lt; ${st.thresholds?.p95MaxDurationMs ?? 5000}ms</span>
               </div>
             </div>
@@ -347,6 +354,11 @@ export function applyScriptJsonToVisualState(scriptObj, options = {}, callbacks 
           xmlNamespace: st.xmlNamespace || baseTpl.xmlNamespace || 'http://tempuri.org/',
           timeout: st.timeout || baseTpl.timeout || '60s',
           thinkTimeSec: st.thinkTimeSec ?? baseTpl.thinkTimeSec ?? 1.0,
+          thinkTimeRange: st.thinkTimeRange
+            ? JSON.parse(JSON.stringify(st.thinkTimeRange))
+            : baseTpl.thinkTimeRange
+            ? JSON.parse(JSON.stringify(baseTpl.thinkTimeRange))
+            : { enabled: true, min: 1.0, max: 3.0 },
           dataRequirements: JSON.parse(JSON.stringify(baseTpl.dataRequirements || {})),
           data: {},
           thresholds: baseTpl.thresholds ? JSON.parse(JSON.stringify(baseTpl.thresholds)) : {},

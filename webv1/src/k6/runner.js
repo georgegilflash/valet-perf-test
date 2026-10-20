@@ -111,6 +111,7 @@ function selectStepIdValue(step, vuNumber) {
   if (!step.data || typeof step.data !== 'object') return '';
   const list =
     step.data.locationIds ||
+    step.data.locationIdsQa3 ||
     step.data.kioskIds ||
     step.data.userGuids ||
     step.data.customIds ||
@@ -287,7 +288,22 @@ function executeStep(step, stepOrder, scenarioObj, iterationContext = {}) {
     }
   });
 
-  const sleepSec = step.thinkTimeSec !== undefined ? Number(step.thinkTimeSec) : 1;
+  // Calculate think time: support randomized range (min-max) or fixed thinkTimeSec
+  let sleepSec = 1;
+  if (
+    step.thinkTimeRange &&
+    typeof step.thinkTimeRange === 'object' &&
+    step.thinkTimeRange.enabled !== false &&
+    typeof step.thinkTimeRange.min === 'number' &&
+    typeof step.thinkTimeRange.max === 'number'
+  ) {
+    const min = Math.max(0, step.thinkTimeRange.min);
+    const max = Math.max(min, step.thinkTimeRange.max);
+    sleepSec = min === max ? min : min + Math.random() * (max - min);
+  } else if (step.thinkTimeSec !== undefined && step.thinkTimeSec !== null) {
+    sleepSec = Number(step.thinkTimeSec);
+  }
+
   if (sleepSec > 0) {
     sleep(sleepSec);
   }

@@ -141,17 +141,35 @@ function validateStepDefinition(step, label, maxVuForScenario, errors, warnings)
     errors.push(`${label}: "thinkTimeSec" must be a number greater than or equal to 0.`);
   }
 
+  // Validate think time range (min-max) if defined
+  if (step.thinkTimeRange !== undefined && step.thinkTimeRange !== null) {
+    if (typeof step.thinkTimeRange !== 'object') {
+      errors.push(`${label}: "thinkTimeRange" must be an object with min and max numbers.`);
+    } else {
+      const { min, max } = step.thinkTimeRange;
+      if (min !== undefined && (typeof min !== 'number' || min < 0)) {
+        errors.push(`${label}: "thinkTimeRange.min" must be a number greater than or equal to 0.`);
+      }
+      if (max !== undefined && (typeof max !== 'number' || max < 0)) {
+        errors.push(`${label}: "thinkTimeRange.max" must be a number greater than or equal to 0.`);
+      }
+      if (typeof min === 'number' && typeof max === 'number' && min > max) {
+        errors.push(`${label}: "thinkTimeRange.min" (${min}s) cannot be greater than "thinkTimeRange.max" (${max}s).`);
+      }
+    }
+  }
+
   // Validate Data block & ID arrays
   if (!step.data || typeof step.data !== 'object') {
     errors.push(`${label}: missing "data" block with IDs/parameters configuration.`);
   } else {
-    const idArrayKeys = ['locationIds', 'kioskIds', 'userGuids', 'customIds'].filter(
+    const idArrayKeys = ['locationIds', 'locationIdsQa3', 'kioskIds', 'userGuids', 'customIds'].filter(
       (k) => step.data[k] !== undefined
     );
 
     if (idArrayKeys.length === 0 && !step.customXmlBody) {
       warnings.push(
-        `${label}: No ID array ("locationIds", "kioskIds", or "userGuids") was defined in "data".`
+        `${label}: No ID array ("locationIds", "locationIdsQa3", "kioskIds", or "userGuids") was defined in "data".`
       );
     }
 

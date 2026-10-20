@@ -4,6 +4,8 @@ import { callKioskGetKnownDriversTemplate } from './callKioskGetKnownDrivers.tem
 import { callKioskGetKnownDriverChangesTemplate } from './callKioskGetKnownDriverChanges.template.js';
 import { callKioskIssueTicket2Template } from './callKioskIssueTicket2.template.js';
 import { callKioskGetTicketTemplate } from './callKioskGetTicket.template.js';
+import { callPaymentsNewMessagesTemplate } from './callPaymentsNewMessages.template.js';
+import { callSignNewMessagesTemplate } from './callSignNewMessages.template.js';
 
 /**
  * Central Developer Catalog of Endpoint Templates
@@ -16,6 +18,8 @@ export const ENDPOINT_CATALOG = [
   callKioskGetKnownDriverChangesTemplate,
   callKioskIssueTicket2Template,
   callKioskGetTicketTemplate,
+  callPaymentsNewMessagesTemplate,
+  callSignNewMessagesTemplate,
 ];
 
 /**
@@ -97,6 +101,9 @@ export function buildEndpointConfigFromTemplate(template, poolsMap = {}, stagesC
     xmlNamespace: template.xmlNamespace,
     timeout: template.defaultTimeout,
     thinkTimeSec: template.defaultThinkTimeSec,
+    thinkTimeRange: template.defaultThinkTimeRange
+      ? { ...template.defaultThinkTimeRange }
+      : { enabled: true, min: template.defaultThinkTimeSec ?? 1.0, max: (template.defaultThinkTimeSec ?? 1.0) + 2.0 },
     usersPerStage,
     data: dataBlock,
     thresholds: {
