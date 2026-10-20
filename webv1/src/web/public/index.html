@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Valet Performance Testing Studio — Webv1</title>
+  <title>Lucerna</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
@@ -47,12 +49,12 @@
   <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 font-bold text-white text-lg">
-          k6
+        <div class="w-10 h-10 flex items-center justify-center">
+          <img src="/assets/favicon.svg" alt="Lucerna Logo" class="w-full h-full object-contain" />
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-lg font-bold text-white tracking-tight">Valet Performance Testing Studio</h1>
+            <h1 class="text-lg font-bold text-white tracking-tight">Lucerna</h1>
             <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30">webv1</span>
           </div>
           <p class="text-xs text-slate-400">Drag & Drop Multi-Step Scenarios · Stage Configuration · HTML Reports (p50, p90, p95, p99)</p>
@@ -472,7 +474,7 @@
         <!-- Bottom Left Chart: Active Virtual Users & Throughput -->
         <div class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
-            👥 Active Virtual Users (VUs) & Throughput
+            Active Virtual Users (VUs) & Throughput
           </h3>
           <div class="h-64">
             <canvas id="chart-throughput"></canvas>
@@ -486,6 +488,21 @@
           </h3>
           <div class="h-64">
             <canvas id="chart-latency"></canvas>
+          </div>
+        </div>
+
+        <!-- 4th Chart: Error Rate & HTTP Status Codes per Second -->
+        <div class="lg:col-span-12 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-rose-400">
+                Error Rate & HTTP Status Codes per Second (Real-Time Failure & Status Breakdown)
+              </h3>
+              <p class="text-[11px] text-slate-400">Tracks error rate percentage alongside exact HTTP status codes (200 OK, 4xx, 5xx, SOAP Faults, Network errors) each second</p>
+            </div>
+          </div>
+          <div class="h-64">
+            <canvas id="chart-status-codes"></canvas>
           </div>
         </div>
       </div>
@@ -522,13 +539,22 @@
         </div>
       </div>
 
-      <!-- Live Console Output -->
+      <!-- Live Console Output (Hidden by default for performance) -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Live k6 Console</h3>
-          <button onclick="clearLiveConsole()" class="text-xs text-slate-400 hover:text-white">Clear console</button>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Live k6 Console</h3>
+            <span id="live-console-count" class="text-[11px] font-mono text-slate-400 px-2 py-0.5 rounded bg-slate-950 border border-slate-800">0 lines</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="toggle-console-btn" onclick="toggleLiveConsole()" class="text-xs font-medium text-sky-400 hover:text-sky-300 transition">Show Console</button>
+            <span class="text-slate-700">|</span>
+            <button onclick="clearLiveConsole()" class="text-xs text-slate-400 hover:text-white transition">Clear Console</button>
+          </div>
         </div>
-        <pre id="live-console-output" class="code-editor bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 h-64 overflow-y-auto custom-scrollbar leading-relaxed">Waiting for k6 execution...</pre>
+        <div id="live-console-wrapper" class="hidden">
+          <pre id="live-console-output" class="code-editor bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 h-64 overflow-y-auto custom-scrollbar leading-relaxed">Waiting for k6 execution...</pre>
+        </div>
       </div>
     </section>
 

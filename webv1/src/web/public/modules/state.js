@@ -30,7 +30,8 @@ export const state = {
     locationIds: [],
     locationIdsQa3: [],
     kioskIds: [],
-    userGuids: []
+    userGuids: [],
+    tokens: []
   },
   stages: JSON.parse(JSON.stringify(DEFAULT_STAGES)),
   globalThresholds: { ...DEFAULT_GLOBAL_THRESHOLDS },
@@ -45,7 +46,8 @@ export const state = {
   charts: {
     requestsNow: null,
     throughput: null,
-    latency: null
+    latency: null,
+    statusCodes: null
   }
 };
 

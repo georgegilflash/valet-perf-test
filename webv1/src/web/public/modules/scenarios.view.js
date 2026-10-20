@@ -31,14 +31,14 @@ export async function loadCatalogAndPools() {
     const res = await fetch('/api/catalog');
     const data = await res.json();
     state.catalog = data.catalog || [];
-    state.pools = data.pools || { locationIds: [], locationIdsQa3: [], kioskIds: [], userGuids: [] };
+    state.pools = data.pools || { locationIds: [], locationIdsQa3: [], kioskIds: [], userGuids: [], tokens: [] };
 
     state.catalog.forEach((tpl) => {
       const primaryPool = tpl.dataRequirements?.primaryIdPool;
       const poolKey = primaryPool?.key || 'locationIds';
       const fullPoolList = state.pools[poolKey] || [];
-      const defaultSliceCount = primaryPool?.defaultCount || fullPoolList.length || 5;
-      const defaultConfirmedIds = fullPoolList.slice(0, defaultSliceCount);
+      // Load the complete pool so all available IDs are ready immediately
+      const defaultConfirmedIds = [...fullPoolList];
 
       const alignedUsersPerStage = state.stages.map((_, idx) => {
         if (Array.isArray(tpl.defaultUsersPerStage) && tpl.defaultUsersPerStage[idx] !== undefined) {
@@ -420,7 +420,7 @@ export function renderSelectedEndpointsConfig() {
     <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow">
       <div class="flex items-center gap-1.5 flex-wrap">
         <span class="text-xs font-bold uppercase tracking-wider text-slate-400 mr-2 flex items-center gap-1.5">
-          <span>🎯 Select Scenario:</span>
+          <span>Select Scenario:</span>
         </span>
         ${state.scenarios
           .map((sc, i) => {
@@ -525,7 +525,7 @@ export function renderSelectedEndpointsConfig() {
                       ${escapeHtml(step.service)} · SOAP ${escapeHtml(step.soapVersion)}
                     </span>
                     <span id="step-id-badge-${sc.id}-${stepIdx}" class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-mono">
-                      ${currentIds.length} IDs (${escapeHtml(step.data?.selectionMode || 'random')})
+                      ${currentIds.length} / ${defaultPoolList.length} IDs (${escapeHtml(step.data?.selectionMode || 'random')})
                     </span>
                     <span class="px-2 py-0.5 rounded bg-slate-800/80 text-emerald-400 border border-slate-700/60 text-[11px] font-mono" title="Think time">
                       ⏱ ${
@@ -562,18 +562,18 @@ export function renderSelectedEndpointsConfig() {
 
                 <!-- Collapsible Step Configuration Drawer -->
                 <div class="${step.drawerOpen ? 'block' : 'hidden'} pt-3 border-t border-slate-800/90 space-y-4">
-                  <!-- Timeout, Think Time & SLA p95 -->
-                  <div class="space-y-2">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
-                        <label class="block text-[10px] text-slate-400">Step Timeout (e.g. 60s)</label>
+                  <!-- Timeout, Think Time & SLA Thresholds -->
+                  <div class="space-y-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
+                        <label class="block text-[10px] text-slate-400 font-medium mb-1">Step Timeout (e.g. 60s)</label>
                         <input type="text" value="${escapeHtml(step.timeout)}"
                           oninput="updateStepField('${sc.id}', ${stepIdx}, 'timeout', this.value)"
                           class="w-full bg-transparent text-xs font-mono text-white focus:outline-none" />
                       </div>
-                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
                         <div class="flex items-center justify-between mb-1">
-                          <label class="block text-[10px] text-slate-400">Think Time</label>
+                          <label class="block text-[10px] text-slate-400 font-medium">Think Time</label>
                           <label class="flex items-center gap-1 cursor-pointer select-none" title="Toggle between fixed think time and randomizer range">
                             <input type="checkbox" ${step.thinkTimeRange?.enabled ? 'checked' : ''}
                               onchange="toggleStepThinkTimeRandomizer('${sc.id}', ${stepIdx}, this.checked)"
@@ -616,49 +616,55 @@ export function renderSelectedEndpointsConfig() {
                         `
                         }
                       </div>
-                      <!-- Thresholds SLA (p50, p90, p95, p99) -->
-                      <div class="space-y-1">
-                        <div class="flex items-center justify-between">
-                          <label class="block text-[10px] text-slate-400 font-semibold">Response Time Thresholds (ms)</label>
-                          <span class="text-[9px] text-slate-500 font-mono">inherits global if empty</span>
+                    </div>
+
+                    <!-- Thresholds SLA (p50, p90, p95, p99) con fila independiente y amplio padding -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 space-y-2">
+                      <div class="flex flex-wrap items-center justify-between gap-1">
+                        <label class="block text-[11px] text-slate-300 font-semibold">Response Time Thresholds (ms)</label>
+                        <span class="text-[10px] text-slate-400 font-mono">inherits global if empty</span>
+                      </div>
+                      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2">
+                          <span class="block text-[9px] text-emerald-400 font-mono font-bold mb-0.5">p50 (ms)</span>
+                          <input type="number" step="50" min="0"
+                            value="${step.thresholds?.p50MaxDurationMs !== undefined ? step.thresholds.p50MaxDurationMs : ''}"
+                            placeholder="(${state.globalThresholds?.p50 ?? 500})"
+                            title="Percentil 50 umbral (ms)"
+                            oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p50MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                            class="w-full bg-transparent text-xs font-mono text-emerald-300 focus:outline-none" />
                         </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
-                            <span class="block text-[8px] text-emerald-400 font-mono font-bold">p50 (ms)</span>
-                            <input type="number" step="50" min="0"
-                              value="${step.thresholds?.p50MaxDurationMs !== undefined ? step.thresholds.p50MaxDurationMs : ''}"
-                              placeholder="Global (${state.globalThresholds?.p50 ?? 500})"
-                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p50MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
-                              class="w-full bg-transparent text-xs font-mono text-emerald-300 focus:outline-none" />
-                          </div>
-                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
-                            <span class="block text-[8px] text-sky-400 font-mono font-bold">p90 (ms)</span>
-                            <input type="number" step="50" min="0"
-                              value="${step.thresholds?.p90MaxDurationMs !== undefined ? step.thresholds.p90MaxDurationMs : ''}"
-                              placeholder="Global (${state.globalThresholds?.p90 ?? 1000})"
-                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p90MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
-                              class="w-full bg-transparent text-xs font-mono text-sky-300 focus:outline-none" />
-                          </div>
-                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
-                            <span class="block text-[8px] text-amber-400 font-mono font-bold">p95 (ms)</span>
-                            <input type="number" step="50" min="0"
-                              value="${step.thresholds?.p95MaxDurationMs !== undefined ? step.thresholds.p95MaxDurationMs : ''}"
-                              placeholder="Global (${state.globalThresholds?.p95 ?? 2500})"
-                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p95MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
-                              class="w-full bg-transparent text-xs font-mono text-amber-300 focus:outline-none" />
-                          </div>
-                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
-                            <span class="block text-[8px] text-rose-400 font-mono font-bold">p99 (ms)</span>
-                            <input type="number" step="50" min="0"
-                              value="${step.thresholds?.p99MaxDurationMs !== undefined ? step.thresholds.p99MaxDurationMs : ''}"
-                              placeholder="Global (${state.globalThresholds?.p99 ?? 5000})"
-                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p99MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
-                              class="w-full bg-transparent text-xs font-mono text-rose-300 focus:outline-none" />
-                          </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2">
+                          <span class="block text-[9px] text-sky-400 font-mono font-bold mb-0.5">p90 (ms)</span>
+                          <input type="number" step="50" min="0"
+                            value="${step.thresholds?.p90MaxDurationMs !== undefined ? step.thresholds.p90MaxDurationMs : ''}"
+                            placeholder="(${state.globalThresholds?.p90 ?? 1000})"
+                            title="Percentil 90 umbral (ms)"
+                            oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p90MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                            class="w-full bg-transparent text-xs font-mono text-sky-300 focus:outline-none" />
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2">
+                          <span class="block text-[9px] text-amber-400 font-mono font-bold mb-0.5">p95 (ms)</span>
+                          <input type="number" step="50" min="0"
+                            value="${step.thresholds?.p95MaxDurationMs !== undefined ? step.thresholds.p95MaxDurationMs : ''}"
+                            placeholder="(${state.globalThresholds?.p95 ?? 2500})"
+                            title="Percentil 95 umbral (ms)"
+                            oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p95MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                            class="w-full bg-transparent text-xs font-mono text-amber-300 focus:outline-none" />
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2">
+                          <span class="block text-[9px] text-rose-400 font-mono font-bold mb-0.5">p99 (ms)</span>
+                          <input type="number" step="50" min="0"
+                            value="${step.thresholds?.p99MaxDurationMs !== undefined ? step.thresholds.p99MaxDurationMs : ''}"
+                            placeholder="(${state.globalThresholds?.p99 ?? 5000})"
+                            title="Percentil 99 umbral (ms)"
+                            oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p99MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                            class="w-full bg-transparent text-xs font-mono text-rose-300 focus:outline-none" />
                         </div>
                       </div>
                     </div>
                   </div>
+                  
 
                   <!-- Confirmed IDs & Assertions Grid -->
                   <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -681,8 +687,9 @@ export function renderSelectedEndpointsConfig() {
                             class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition">
                             ↺ Default (${primaryPool.defaultCount || 15})
                           </button>
-                          <button onclick="loadDefaultIdsForStep('${sc.id}', ${stepIdx}, '${poolKey}', ${defaultPoolList.length})"
-                            class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-sky-300 transition">
+                          <button onclick="loadDefaultIdsForStep('${sc.id}', ${stepIdx}, '${poolKey}', null)"
+                            class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-sky-300 font-bold transition"
+                            title="Load all ${defaultPoolList.length} IDs from pool">
                             All (${defaultPoolList.length})
                           </button>
                         </div>
@@ -792,7 +799,7 @@ export function renderSelectedEndpointsConfig() {
                     <div class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3 space-y-2.5">
                       <div class="flex items-center justify-between">
                         <h5 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                          <span>🎟️ IssueTicket2 Settings</span>
+                          <span>IssueTicket2 Settings</span>
                         </h5>
                         <span class="text-[10px] text-slate-400 font-mono">kioskID: selected from pool above</span>
                       </div>
@@ -880,7 +887,7 @@ export function renderSelectedEndpointsConfig() {
       <!-- Scenario Target Virtual Users per Stage -->
       <div>
         <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
-          👥 Scenario Target Virtual Users (VUs) per Stage
+          Scenario Target Virtual Users (VUs) per Stage
         </h4>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           ${stagesInputsHtml}
@@ -995,8 +1002,9 @@ export function updateStepSelectionMode(scenarioId, stepIdx, mode) {
   sc.steps[stepIdx].data.selectionMode = mode;
   const primaryPool = sc.steps[stepIdx].dataRequirements?.primaryIdPool || { key: 'locationIds' };
   const count = (sc.steps[stepIdx].data[primaryPool.key] || []).length;
+  const total = (state.pools[primaryPool.key] || []).length;
   const badge = document.getElementById(`step-id-badge-${scenarioId}-${stepIdx}`);
-  if (badge) badge.textContent = `${count} IDs (${mode})`;
+  if (badge) badge.textContent = `${count} / ${total} IDs (${mode})`;
 }
 
 export function updateStepIdList(scenarioId, stepIdx, poolKey, rawText) {
@@ -1008,9 +1016,10 @@ export function updateStepIdList(scenarioId, stepIdx, poolKey, rawText) {
     .filter(Boolean);
   sc.steps[stepIdx].data[poolKey] = list;
 
+  const total = (state.pools[poolKey] || []).length;
   const badge = document.getElementById(`step-id-badge-${scenarioId}-${stepIdx}`);
   if (badge) {
-    badge.textContent = `${list.length} IDs (${sc.steps[stepIdx].data.selectionMode || 'random'})`;
+    badge.textContent = `${list.length} / ${total} IDs (${sc.steps[stepIdx].data.selectionMode || 'random'})`;
   }
 }
 
@@ -1018,7 +1027,9 @@ export function loadDefaultIdsForStep(scenarioId, stepIdx, poolKey, count) {
   const sc = state.scenarios.find((s) => s.id === scenarioId);
   if (!sc || !sc.steps[stepIdx]) return;
   const fullPool = state.pools[poolKey] || [];
-  const sliced = fullPool.slice(0, count);
+  const sliced = (count === null || count === undefined || count >= fullPool.length)
+    ? [...fullPool]
+    : fullPool.slice(0, count);
   sc.steps[stepIdx].data[poolKey] = [...sliced];
 
   const textarea = document.getElementById(`textarea-step-ids-${scenarioId}-${stepIdx}`);
@@ -1027,7 +1038,7 @@ export function loadDefaultIdsForStep(scenarioId, stepIdx, poolKey, count) {
   }
   const badge = document.getElementById(`step-id-badge-${scenarioId}-${stepIdx}`);
   if (badge) {
-    badge.textContent = `${sliced.length} IDs (${sc.steps[stepIdx].data.selectionMode || 'random'})`;
+    badge.textContent = `${sliced.length} / ${fullPool.length} IDs (${sc.steps[stepIdx].data.selectionMode || 'random'})`;
   }
   showToast(`Loaded ${sliced.length} IDs from data/${poolKey}.json`, 'info');
 }

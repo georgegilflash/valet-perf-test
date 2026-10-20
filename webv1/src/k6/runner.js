@@ -59,21 +59,32 @@ const thresholds = {
   http_req_failed: [`rate<${globalMaxError}`]
 };
 
-if (globalThresholdsConfig.p50MaxDurationMs) {
+// Compute effective global thresholds taking into account endpoints with higher defaults (e.g. long-polling 60s)
+const maxEpP50 = Math.max(...distinctEndpoints.map(e => e.thresholds?.p50MaxDurationMs || 0), 0);
+const maxEpP90 = Math.max(...distinctEndpoints.map(e => e.thresholds?.p90MaxDurationMs || 0), 0);
+const maxEpP95 = Math.max(...distinctEndpoints.map(e => e.thresholds?.p95MaxDurationMs || 0), 0);
+const maxEpP99 = Math.max(...distinctEndpoints.map(e => e.thresholds?.p99MaxDurationMs || 0), 0);
+
+const effP50 = Math.max(globalThresholdsConfig.p50MaxDurationMs || 0, maxEpP50);
+const effP90 = Math.max(globalThresholdsConfig.p90MaxDurationMs || 0, maxEpP90);
+const effP95 = Math.max(globalThresholdsConfig.p95MaxDurationMs || 0, maxEpP95);
+const effP99 = Math.max(globalThresholdsConfig.p99MaxDurationMs || 0, maxEpP99);
+
+if (effP50 > 0) {
   thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
-  thresholds['http_req_duration'].push(`p(50)<${globalThresholdsConfig.p50MaxDurationMs}`);
+  thresholds['http_req_duration'].push(`p(50)<${effP50}`);
 }
-if (globalThresholdsConfig.p90MaxDurationMs) {
+if (effP90 > 0) {
   thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
-  thresholds['http_req_duration'].push(`p(90)<${globalThresholdsConfig.p90MaxDurationMs}`);
+  thresholds['http_req_duration'].push(`p(90)<${effP90}`);
 }
-if (globalThresholdsConfig.p95MaxDurationMs) {
+if (effP95 > 0) {
   thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
-  thresholds['http_req_duration'].push(`p(95)<${globalThresholdsConfig.p95MaxDurationMs}`);
+  thresholds['http_req_duration'].push(`p(95)<${effP95}`);
 }
-if (globalThresholdsConfig.p99MaxDurationMs) {
+if (effP99 > 0) {
   thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
-  thresholds['http_req_duration'].push(`p(99)<${globalThresholdsConfig.p99MaxDurationMs}`);
+  thresholds['http_req_duration'].push(`p(99)<${effP99}`);
 }
 
 distinctEndpoints.forEach((ep) => {
@@ -148,6 +159,7 @@ function selectStepIdValue(step, vuNumber) {
     step.data.locationIdsQa3 ||
     step.data.kioskIds ||
     step.data.userGuids ||
+    step.data.tokens ||
     step.data.customIds ||
     [];
 
@@ -317,7 +329,9 @@ function executeStep(step, stepOrder, scenarioObj, iterationContext = {}) {
       );
     }
 
-    if (res.body) {
+    // Only dump full XML body on failure or if explicit DEBUG_BODY is enabled
+    // This prevents browser and process crash when running with high VUs
+    if (res.body && (!isSuccess || __ENV.DEBUG_BODY === 'true')) {
       console.log(`--- [VU ${__VU}] [${step.name || epId}] Response Body (HTTP ${res.status}) ---\n${formatXml(res.body)}\n------------------------------------------------------------`);
     }
   });

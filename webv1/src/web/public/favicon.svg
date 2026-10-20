@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente del fondo contenedor estilo App Icon -->
+    <linearGradient id="favBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0b1120" />
+    </linearGradient>
+
+    <!-- Resplandor térmico de la llama -->
+    <radialGradient id="favGlow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#0b1120" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Gradientes de fuego para las barras -->
+    <linearGradient id="barLow" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#b91c1c" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+
+    <linearGradient id="barMid" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#c2410c" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+
+    <linearGradient id="barPeak" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ea580c" />
+      <stop offset="50%" stop-color="#facc15" />
+      <stop offset="100%" stop-color="#ffffff" />
+    </linearGradient>
+  </defs>
+
+  <!-- Contenedor / Squircle con borde sutil -->
+  <rect width="64" height="64" rx="14" fill="url(#favBg)" />
+  <rect width="62" height="62" x="1" y="1" rx="13" fill="none" stroke="#334155" stroke-width="1.2" />
+
+  <!-- Halo de calor de fondo -->
+  <circle cx="32" cy="28" r="22" fill="url(#favGlow)" />
+
+  <!-- ============================================== -->
+  <!-- LA LLAMA DE MÉTRICAS (5 BARRAS DE ALTO IMPACTO)-->
+  <!-- ============================================== -->
+
+  <!-- Barra 1 (Izquierda) -->
+  <rect x="15.5" y="32" width="4.5" height="13" rx="2.2" fill="url(#barLow)" />
+
+  <!-- Barra 2 -->
+  <rect x="23" y="22" width="4.5" height="23" rx="2.2" fill="url(#barMid)" />
+
+  <!-- Barra 3 (Pico de estrés central) -->
+  <rect x="30" y="12" width="5" height="33" rx="2.5" fill="url(#barPeak)" />
+
+  <!-- Barra 4 -->
+  <rect x="37.5" y="18" width="4.5" height="27" rx="2.2" fill="url(#barMid)" />
+
+  <!-- Barra 5 (Derecha) -->
+  <rect x="45" y="30" width="4.5" height="15" rx="2.2" fill="url(#barLow)" />
+
+  <!-- Línea de Latencia / Ramp-up -->
+  <polyline points="17.7,32 25.2,22 32.5,12 39.7,18 47.2,30" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Nodo del Pico Máximo -->
+  <circle cx="32.5" cy="12" r="2.8" fill="#ffffff" stroke="#f59e0b" stroke-width="1.2" />
+
+  <!-- ============================================== -->
+  <!-- LÁMPARA ROMANA MINIMALISTA (BASE)              -->
+  <!-- ============================================== -->
+
+  <!-- Asa izquierda (anillo clásico) -->
+  <circle cx="10" cy="46" r="3.2" fill="none" stroke="#64748b" stroke-width="1.8" />
+
+  <!-- Cuerpo de la lucerna -->
+  <path d="M 13 45.5 
+           C 18 44, 43 44, 51 46 
+           C 54 46.8, 53.5 49, 49 50.5 
+           C 40 54, 22 54, 13 47 Z" fill="#1e293b" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round" />
+
+  <!-- Borde superior ámbar del depósito -->
+  <ellipse cx="32" cy="45.2" rx="14" ry="1.6" fill="#0b1120" stroke="#d97706" stroke-width="1.2" />
+
+  <!-- Boquilla / Mecha incandescente -->
+  <path d="M 48 46 C 51 46.5 51 48 48 48.5" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" />
+</svg>

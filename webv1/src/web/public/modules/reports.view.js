@@ -49,7 +49,7 @@ export async function loadReportsHistory() {
           <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 transition flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div class="space-y-1.5">
               <div class="flex flex-wrap items-center gap-2.5">
-                <span class="text-base font-bold text-white font-mono">📁 ${escapeHtml(run.runId)}</span>
+                <span class="text-base font-bold text-white font-mono">${escapeHtml(run.runId)}</span>
                 <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 text-xs font-semibold">
                   ${escapeHtml(run.environment)}
                 </span>

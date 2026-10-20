@@ -1,4 +1,4 @@
-# ⚡ Valet Performance Testing Studio (`webv1`)
+# ⚡ Lucerna
 
 An interactive Web Testing Studio, Drag-and-Drop Multi-Step Scenario Builder, JSON Pre-Flight Validator (`test-performance-script`), Real-Time Telemetry Dashboard, and Automated HTML Report Generator (Global & Per-Endpoint with **p50, p90, p95, and p99**) powered by **Grafana k6** and **Docker**.
 

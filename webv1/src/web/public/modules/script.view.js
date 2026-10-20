@@ -255,7 +255,7 @@ export function renderScriptVisualSummary(scriptObj, summary) {
     .map((sc, idx) => {
       const stepsBadges = (sc.steps || [])
         .map((st, sIdx) => {
-          const idKey = ['locationIds', 'kioskIds', 'userGuids', 'customIds'].find((k) => Array.isArray(st.data?.[k]));
+          const idKey = ['locationIds', 'locationIdsQa3', 'kioskIds', 'userGuids', 'tokens', 'customIds'].find((k) => Array.isArray(st.data?.[k]));
           const idsCount = idKey ? st.data[idKey].length : 0;
           return `
             <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-2">

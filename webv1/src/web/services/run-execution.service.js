@@ -234,6 +234,7 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
       durations: [],
       errors: 0,
       requests: 0,
+      statusCodes: {},
       vusSeen: new Set(),
       byEndpoint: {}
     };
@@ -247,6 +248,9 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
       currentSecondBucket.durations.push(m.durationMs);
       currentSecondBucket.vusSeen.add(`${m.scenarioId || m.endpointId}_${m.vu}`);
       if (!m.ok) currentSecondBucket.errors += 1;
+
+      const codeKey = String(m.status || (m.ok ? 200 : 500));
+      currentSecondBucket.statusCodes[codeKey] = (currentSecondBucket.statusCodes[codeKey] || 0) + 1;
 
       if (!currentSecondBucket.byEndpoint[m.endpointId]) {
         currentSecondBucket.byEndpoint[m.endpointId] = { durations: [], requests: 0, errors: 0 };
@@ -314,6 +318,7 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
         const epSorted = [...epBucket.durations].sort((a, b) => a - b);
         epSnapshot[ep.id] = {
           name: ep.name || ep.id,
+          requestsNow: epBucket.requests,
           rps: epBucket.requests,
           errors: epBucket.errors,
           avgMs: epSorted.length > 0
@@ -326,11 +331,17 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
         };
       }
 
+      const errorRatePct = currentSecondBucket.requests > 0
+        ? Number(((currentSecondBucket.errors / currentSecondBucket.requests) * 100).toFixed(1))
+        : 0;
+
       const point = {
         elapsedSec,
         label: `${elapsedSec}s`,
         rps: currentSecondBucket.requests,
         errors: currentSecondBucket.errors,
+        errorRatePct,
+        statusCodes: { ...currentSecondBucket.statusCodes },
         activeVUs,
         avgMs,
         p50Ms,
@@ -349,6 +360,7 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
         durations: [],
         errors: 0,
         requests: 0,
+        statusCodes: {},
         vusSeen: new Set(),
         byEndpoint: {}
       };

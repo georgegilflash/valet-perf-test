@@ -9,6 +9,7 @@ const rootDir = path.resolve(__dirname, '..');
 // Default source CSV and destination JSON files
 const DEFAULT_CSV = path.join(rootDir, 'KDN Kiosks - Sheet1.csv');
 const DEST_JSON = path.join(rootDir, 'kiosk-ids.json');
+const DATA_DEST_JSON = path.join(rootDir, 'webv1', 'data', 'kiosk-ids.json');
 
 const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -98,12 +99,15 @@ function generateKioskIds() {
   }
 
   // Write JSON file (formatted with 2 spaces for readability)
-  fs.writeFileSync(DEST_JSON, JSON.stringify(idsToSave, null, 2), 'utf-8');
+  const jsonOutput = JSON.stringify(idsToSave, null, 2);
+  fs.writeFileSync(DEST_JSON, jsonOutput, 'utf-8');
+  fs.mkdirSync(path.dirname(DATA_DEST_JSON), { recursive: true });
+  fs.writeFileSync(DATA_DEST_JSON, jsonOutput, 'utf-8');
 
   console.log(
     `\x1b[32mSuccessfully generated:  ${path.basename(DEST_JSON)} (${idsToSave.length} unique Kiosk IDs)\x1b[0m`
   );
-  console.log(`Destination path:        ${DEST_JSON}\n`);
+  console.log(`Destination paths:       ${DEST_JSON}\n                         ${DATA_DEST_JSON}\n`);
 }
 
 generateKioskIds();

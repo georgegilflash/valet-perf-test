@@ -207,6 +207,32 @@ export function buildSoapEnvelope(endpointConfig, selectedIdValue, context = {})
 </soap12:Envelope>`;
   }
 
+  // Specific handler for Valet NewMessages4 (SOAP 1.1 / 1.2)
+  if (opName === 'NewMessages4' || endpointConfig.id === 'callValetNewMessages4') {
+    const compressed = endpointConfig.data?.compressed !== undefined ? endpointConfig.data.compressed : 'true';
+    const seconds = endpointConfig.data?.seconds !== undefined ? endpointConfig.data.seconds : 60;
+    const bodyContent = `
+    <NewMessages4 xmlns="${ns}">
+      <loginToken>${selectedIdValue || ''}</loginToken>
+      <compressed>${compressed}</compressed>
+      <seconds>${seconds}</seconds>
+    </NewMessages4>`;
+
+    if (soapVersion === '1.2') {
+      return `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>${bodyContent}
+  </soap12:Body>
+</soap12:Envelope>`;
+    }
+
+    return `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>${bodyContent}
+  </soap:Body>
+</soap:Envelope>`;
+  }
+
   const innerParam = selectedIdValue
     ? `<${xmlElement}>${selectedIdValue}</${xmlElement}>`
     : '';

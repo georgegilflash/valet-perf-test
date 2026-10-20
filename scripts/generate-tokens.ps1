@@ -12,7 +12,7 @@ param (
     [int]$Count = 0
 )
 
-$sourceFile = Join-Path $PSScriptRoot "..\login-token-QA1.txt"
+$sourceFile = Join-Path $PSScriptRoot "..\login-token-QA3.txt"
 $destFile = Join-Path $PSScriptRoot "..\tokens.json"
 
 if (-not (Test-Path $sourceFile)) {

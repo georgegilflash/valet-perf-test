@@ -303,7 +303,7 @@ function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimest
   const statusBadge = isPassed ? 'PASSED' : 'SLA THRESHOLD EXCEEDED';
   const maxErrAllowedPct = evalResult.limits.maxErrorRatePct.toFixed(2);
 
-  const idKeys = ['locationIds', 'kioskIds', 'userGuids', 'customIds'].filter((k) =>
+  const idKeys = ['locationIds', 'kioskIds', 'userGuids', 'tokens', 'customIds'].filter((k) =>
     Array.isArray(epMetrics.data?.[k])
   );
 
@@ -325,6 +325,7 @@ function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimest
 <head>
   <meta charset="UTF-8">
   <title>k6 Report - ${escapeHtml(epMetrics.name)} (${escapeHtml(runTimestamp)})</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <style>${buildCommonStyles(statusColor)}</style>
 </head>
 <body>
@@ -487,12 +488,26 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
 
   const allChecks = collectGroupChecks(data.root_group, []);
 
-  // Evaluate global thresholds
+  // Compute effective global thresholds taking into account endpoints with higher defaults
+  const maxEpP50 = Math.max(...endpointMetricsList.map(e => e.thresholds?.p50MaxDurationMs || 0), 0);
+  const maxEpP90 = Math.max(...endpointMetricsList.map(e => e.thresholds?.p90MaxDurationMs || 0), 0);
+  const maxEpP95 = Math.max(...endpointMetricsList.map(e => e.thresholds?.p95MaxDurationMs || 0), 0);
+  const maxEpP99 = Math.max(...endpointMetricsList.map(e => e.thresholds?.p99MaxDurationMs || 0), 0);
+
+  const effectiveGlobalThresholds = {
+    ...globalCfg.thresholds,
+    p50MaxDurationMs: Math.max(globalCfg.thresholds?.p50MaxDurationMs || 0, maxEpP50) || undefined,
+    p90MaxDurationMs: Math.max(globalCfg.thresholds?.p90MaxDurationMs || 0, maxEpP90) || undefined,
+    p95MaxDurationMs: Math.max(globalCfg.thresholds?.p95MaxDurationMs || 0, maxEpP95) || undefined,
+    p99MaxDurationMs: Math.max(globalCfg.thresholds?.p99MaxDurationMs || 0, maxEpP99) || undefined,
+  };
+
+  // Evaluate global thresholds using the effective thresholds
   const globalEval = evaluateThresholds(
     globalTimings.duration,
     errorRatePct,
-    globalCfg.thresholds,
-    globalCfg.thresholds
+    effectiveGlobalThresholds,
+    effectiveGlobalThresholds
   );
 
   // Check if any individual endpoint failed its SLA threshold
@@ -510,6 +525,7 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
 <head>
   <meta charset="UTF-8">
   <title>General k6 Report (${escapeHtml(runTimestamp)})</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <style>${buildCommonStyles(statusColor)}</style>
 </head>
 <body>

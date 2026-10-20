@@ -163,13 +163,13 @@ function validateStepDefinition(step, label, maxVuForScenario, errors, warnings)
   if (!step.data || typeof step.data !== 'object') {
     errors.push(`${label}: missing "data" block with IDs/parameters configuration.`);
   } else {
-    const idArrayKeys = ['locationIds', 'locationIdsQa3', 'kioskIds', 'userGuids', 'customIds'].filter(
+    const idArrayKeys = ['locationIds', 'locationIdsQa3', 'kioskIds', 'userGuids', 'tokens', 'customIds'].filter(
       (k) => step.data[k] !== undefined
     );
 
     if (idArrayKeys.length === 0 && !step.customXmlBody) {
       warnings.push(
-        `${label}: No ID array ("locationIds", "locationIdsQa3", "kioskIds", or "userGuids") was defined in "data".`
+        `${label}: No ID array ("locationIds", "locationIdsQa3", "kioskIds", "userGuids", or "tokens") was defined in "data".`
       );
     }
 

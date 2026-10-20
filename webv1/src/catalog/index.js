@@ -6,6 +6,7 @@ import { callKioskIssueTicket2Template } from './callKioskIssueTicket2.template.
 import { callKioskGetTicketTemplate } from './callKioskGetTicket.template.js';
 import { callPaymentsNewMessagesTemplate } from './callPaymentsNewMessages.template.js';
 import { callSignNewMessagesTemplate } from './callSignNewMessages.template.js';
+import { callValetNewMessages4Template } from './callValetNewMessages4.template.js';
 
 /**
  * Central Developer Catalog of Endpoint Templates
@@ -20,6 +21,7 @@ export const ENDPOINT_CATALOG = [
   callKioskGetTicketTemplate,
   callPaymentsNewMessagesTemplate,
   callSignNewMessagesTemplate,
+  callValetNewMessages4Template,
 ];
 
 /**
@@ -81,6 +83,10 @@ export function buildEndpointConfigFromTemplate(template, poolsMap = {}, stagesC
   dataBlock.usesUserGuids = Boolean(template.dataRequirements?.usesUserGuids);
   dataBlock.usesKioskIds = Boolean(template.dataRequirements?.usesKioskIds);
   dataBlock.usesLocationIds = Boolean(template.dataRequirements?.usesLocationIds);
+  dataBlock.usesTokens = Boolean(template.dataRequirements?.usesTokens);
+  if (template.dataRequirements?.customParams) {
+    Object.assign(dataBlock, template.dataRequirements.customParams);
+  }
   dataBlock.dateRange = template.dataRequirements?.usesDateRange
     ? { enabled: true, fromMin: '2026-01-01T00:00:00', fromMax: '2026-08-27T00:00:00' }
     : null;
