@@ -25,6 +25,14 @@ export async function loadReportsHistory() {
     container.innerHTML = runs
       .map((run) => {
         const stagesText = (run.stages || []).map((s) => `${s.duration}`).join(' → ');
+        const threshPassed = run.summaryStats?.thresholdsPassed ?? run.thresholdResults?.passed;
+        const threshBadgeHtml =
+          threshPassed === true
+            ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">✓ SLA PASSED</span>`
+            : threshPassed === false
+            ? `<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold">✕ SLA EXCEEDED</span>`
+            : '';
+
         const epLinksHtml = (run.endpointReports || [])
           .filter((ep) => ep.exists)
           .map(
@@ -45,6 +53,7 @@ export async function loadReportsHistory() {
                 <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 text-xs font-semibold">
                   ${escapeHtml(run.environment)}
                 </span>
+                ${threshBadgeHtml}
                 <span class="text-xs text-slate-300 font-semibold">${escapeHtml(run.testName)}</span>
               </div>
               <div class="text-xs text-slate-400 font-mono">

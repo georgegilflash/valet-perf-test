@@ -51,9 +51,30 @@ const distinctEndpoints = Object.values(distinctEndpointsMap);
 // Register isolated k6 metrics per endpoint during init stage
 const endpointMetricsRegistry = {};
 const scenarios = {};
+
+// Build global thresholds
+const globalThresholdsConfig = globalConfig.thresholds || {};
+const globalMaxError = globalThresholdsConfig.maxErrorRate ?? globalConfig.maxErrorRate ?? 0.01;
 const thresholds = {
-  http_req_failed: [`rate<${globalConfig.maxErrorRate ?? 0.01}`]
+  http_req_failed: [`rate<${globalMaxError}`]
 };
+
+if (globalThresholdsConfig.p50MaxDurationMs) {
+  thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
+  thresholds['http_req_duration'].push(`p(50)<${globalThresholdsConfig.p50MaxDurationMs}`);
+}
+if (globalThresholdsConfig.p90MaxDurationMs) {
+  thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
+  thresholds['http_req_duration'].push(`p(90)<${globalThresholdsConfig.p90MaxDurationMs}`);
+}
+if (globalThresholdsConfig.p95MaxDurationMs) {
+  thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
+  thresholds['http_req_duration'].push(`p(95)<${globalThresholdsConfig.p95MaxDurationMs}`);
+}
+if (globalThresholdsConfig.p99MaxDurationMs) {
+  thresholds['http_req_duration'] = thresholds['http_req_duration'] || [];
+  thresholds['http_req_duration'].push(`p(99)<${globalThresholdsConfig.p99MaxDurationMs}`);
+}
 
 distinctEndpoints.forEach((ep) => {
   const prefix = `ep_${ep.id}`;
@@ -71,11 +92,24 @@ distinctEndpoints.forEach((ep) => {
     dataReceived: new Counter(`${prefix}_data_received`)
   };
 
-  if (ep.thresholds?.p95MaxDurationMs) {
-    thresholds[`${prefix}_duration`] = [`p(95)<${ep.thresholds.p95MaxDurationMs}`];
+  // Resolve step thresholds with global fallback
+  const resolvedP50 = ep.thresholds?.p50MaxDurationMs ?? globalThresholdsConfig.p50MaxDurationMs;
+  const resolvedP90 = ep.thresholds?.p90MaxDurationMs ?? globalThresholdsConfig.p90MaxDurationMs;
+  const resolvedP95 = ep.thresholds?.p95MaxDurationMs ?? globalThresholdsConfig.p95MaxDurationMs;
+  const resolvedP99 = ep.thresholds?.p99MaxDurationMs ?? globalThresholdsConfig.p99MaxDurationMs;
+  const resolvedMaxError = ep.thresholds?.maxErrorRate ?? globalMaxError;
+
+  const epDurationThresholds = [];
+  if (resolvedP50) epDurationThresholds.push(`p(50)<${resolvedP50}`);
+  if (resolvedP90) epDurationThresholds.push(`p(90)<${resolvedP90}`);
+  if (resolvedP95) epDurationThresholds.push(`p(95)<${resolvedP95}`);
+  if (resolvedP99) epDurationThresholds.push(`p(99)<${resolvedP99}`);
+
+  if (epDurationThresholds.length > 0) {
+    thresholds[`${prefix}_duration`] = epDurationThresholds;
   }
-  if (ep.thresholds?.maxErrorRate !== undefined) {
-    thresholds[`${prefix}_failed`] = [`rate<${ep.thresholds.maxErrorRate}`];
+  if (resolvedMaxError !== undefined && resolvedMaxError !== null) {
+    thresholds[`${prefix}_failed`] = [`rate<${resolvedMaxError}`];
   }
 });
 

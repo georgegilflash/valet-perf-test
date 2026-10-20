@@ -47,6 +47,46 @@ function extractTrendStats(metricObj) {
   };
 }
 
+/**
+ * Checks whether an endpoint's percentiles and error rate meet configured SLA thresholds.
+ */
+function evaluateThresholds(stats, errorRatePct, thresholdsConfig, globalThresholdsConfig) {
+  const gThresh = globalThresholdsConfig || {};
+  const t = thresholdsConfig || {};
+
+  const limits = {
+    p50: t.p50MaxDurationMs ?? gThresh.p50MaxDurationMs ?? null,
+    p90: t.p90MaxDurationMs ?? gThresh.p90MaxDurationMs ?? null,
+    p95: t.p95MaxDurationMs ?? gThresh.p95MaxDurationMs ?? null,
+    p99: t.p99MaxDurationMs ?? gThresh.p99MaxDurationMs ?? null,
+    maxErrorRatePct: (t.maxErrorRate ?? gThresh.maxErrorRate ?? 0.01) * 100
+  };
+
+  const violations = [];
+
+  if (limits.p50 !== null && stats.p50 > limits.p50) {
+    violations.push(`p50 (${stats.p50.toFixed(1)}ms) exceeded SLA limit (${limits.p50}ms)`);
+  }
+  if (limits.p90 !== null && stats.p90 > limits.p90) {
+    violations.push(`p90 (${stats.p90.toFixed(1)}ms) exceeded SLA limit (${limits.p90}ms)`);
+  }
+  if (limits.p95 !== null && stats.p95 > limits.p95) {
+    violations.push(`p95 (${stats.p95.toFixed(1)}ms) exceeded SLA limit (${limits.p95}ms)`);
+  }
+  if (limits.p99 !== null && stats.p99 > limits.p99) {
+    violations.push(`p99 (${stats.p99.toFixed(1)}ms) exceeded SLA limit (${limits.p99}ms)`);
+  }
+  if (errorRatePct > limits.maxErrorRatePct) {
+    violations.push(`Error Rate (${errorRatePct.toFixed(2)}%) exceeded limit (${limits.maxErrorRatePct.toFixed(2)}%)`);
+  }
+
+  return {
+    passed: violations.length === 0,
+    violations,
+    limits
+  };
+}
+
 function collectGroupChecks(group, acc = []) {
   if (!group) return acc;
   if (Array.isArray(group.checks)) {
@@ -251,10 +291,17 @@ function extractEndpointMetrics(data, ep) {
 function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimestamp) {
   const globalCfg = scriptConfig.globalConfig || {};
   const stages = globalCfg.stages || [];
-  const maxErrAllowedPct = ((epMetrics.thresholds?.maxErrorRate ?? 0.01) * 100).toFixed(2);
-  const isPassed = epMetrics.errorRatePct <= parseFloat(maxErrAllowedPct);
+  const evalResult = evaluateThresholds(
+    epMetrics.timings.duration,
+    epMetrics.errorRatePct,
+    epMetrics.thresholds,
+    globalCfg.thresholds
+  );
+
+  const isPassed = evalResult.passed;
   const statusColor = isPassed ? '#10b981' : '#ef4444';
-  const statusBadge = isPassed ? 'PASSED' : 'THRESHOLD EXCEEDED';
+  const statusBadge = isPassed ? 'PASSED' : 'SLA THRESHOLD EXCEEDED';
+  const maxErrAllowedPct = evalResult.limits.maxErrorRatePct.toFixed(2);
 
   const idKeys = ['locationIds', 'kioskIds', 'userGuids', 'customIds'].filter((k) =>
     Array.isArray(epMetrics.data?.[k])
@@ -305,28 +352,28 @@ function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimest
       </div>
       <div class="card">
         <div class="card-label">Error Rate</div>
-        <div class="card-val" style="color:${epMetrics.errorRatePct > 0 ? '#ef4444' : '#10b981'};">${epMetrics.errorRatePct.toFixed(2)}%</div>
-        <div class="card-sub">Max tolerance: ${maxErrAllowedPct}%</div>
+        <div class="card-val" style="color:${epMetrics.errorRatePct > parseFloat(maxErrAllowedPct) ? '#ef4444' : '#10b981'};">${epMetrics.errorRatePct.toFixed(2)}%</div>
+        <div class="card-sub">Limit: ${maxErrAllowedPct}%</div>
       </div>
       <div class="card">
         <div class="card-label">p50 (Median)</div>
-        <div class="card-val">${formatDuration(epMetrics.timings.duration.p50)}</div>
-        <div class="card-sub">Average (Avg): ${formatDuration(epMetrics.timings.duration.avg)}</div>
+        <div class="card-val" style="color:${evalResult.limits.p50 && epMetrics.timings.duration.p50 > evalResult.limits.p50 ? '#ef4444' : '#38bdf8'};">${formatDuration(epMetrics.timings.duration.p50)}</div>
+        <div class="card-sub">${evalResult.limits.p50 ? `SLA: &le;${evalResult.limits.p50}ms` : `Avg: ${formatDuration(epMetrics.timings.duration.avg)}`}</div>
       </div>
       <div class="card">
         <div class="card-label">p90 Latency</div>
-        <div class="card-val">${formatDuration(epMetrics.timings.duration.p90)}</div>
-        <div class="card-sub">Min: ${formatDuration(epMetrics.timings.duration.min)}</div>
+        <div class="card-val" style="color:${evalResult.limits.p90 && epMetrics.timings.duration.p90 > evalResult.limits.p90 ? '#ef4444' : '#818cf8'};">${formatDuration(epMetrics.timings.duration.p90)}</div>
+        <div class="card-sub">${evalResult.limits.p90 ? `SLA: &le;${evalResult.limits.p90}ms` : `Min: ${formatDuration(epMetrics.timings.duration.min)}`}</div>
       </div>
       <div class="card">
         <div class="card-label">p95 Latency</div>
-        <div class="card-val" style="color:#f59e0b;">${formatDuration(epMetrics.timings.duration.p95)}</div>
-        <div class="card-sub">SLA p95: ${epMetrics.thresholds?.p95MaxDurationMs || 'N/A'}ms</div>
+        <div class="card-val" style="color:${evalResult.limits.p95 && epMetrics.timings.duration.p95 > evalResult.limits.p95 ? '#ef4444' : '#f59e0b'};">${formatDuration(epMetrics.timings.duration.p95)}</div>
+        <div class="card-sub">${evalResult.limits.p95 ? `SLA: &le;${evalResult.limits.p95}ms` : '95th Percentile'}</div>
       </div>
       <div class="card">
         <div class="card-label">p99 Latency</div>
-        <div class="card-val" style="color:#f43f5e;">${formatDuration(epMetrics.timings.duration.p99)}</div>
-        <div class="card-sub">Max: ${formatDuration(epMetrics.timings.duration.max)}</div>
+        <div class="card-val" style="color:${evalResult.limits.p99 && epMetrics.timings.duration.p99 > evalResult.limits.p99 ? '#ef4444' : '#f43f5e'};">${formatDuration(epMetrics.timings.duration.p99)}</div>
+        <div class="card-sub">${evalResult.limits.p99 ? `SLA: &le;${evalResult.limits.p99}ms` : `Max: ${formatDuration(epMetrics.timings.duration.max)}`}</div>
       </div>
       <div class="card">
         <div class="card-label">Peak VUs (Endpoint)</div>
@@ -334,6 +381,17 @@ function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimest
         <div class="card-sub">Timeout: ${escapeHtml(epMetrics.timeout)} | Sleep: ${epMetrics.thinkTimeSec}s</div>
       </div>
     </div>
+
+    ${
+      !isPassed
+        ? `<div class="section" style="border-left: 5px solid #ef4444; background: #450a0a22;">
+            <div class="section-title" style="color:#f87171;">⚠️ SLA Threshold Violations Detected</div>
+            <ul style="margin:0; padding-left:20px; color:#fca5a5; font-size:13px; line-height:1.7;">
+              ${evalResult.violations.map((v) => `<li>${escapeHtml(v)}</li>`).join('')}
+            </ul>
+          </div>`
+        : ''
+    }
 
     <div class="section">
       <div class="section-title">
@@ -428,8 +486,24 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
   };
 
   const allChecks = collectGroupChecks(data.root_group, []);
-  const statusColor = errorRatePct === 0 ? '#10b981' : '#ef4444';
-  const statusBadge = errorRatePct === 0 ? 'PASSED' : 'ATTENTION NEEDED';
+
+  // Evaluate global thresholds
+  const globalEval = evaluateThresholds(
+    globalTimings.duration,
+    errorRatePct,
+    globalCfg.thresholds,
+    globalCfg.thresholds
+  );
+
+  // Check if any individual endpoint failed its SLA threshold
+  const anyEndpointFailed = endpointMetricsList.some((ep) => {
+    const res = evaluateThresholds(ep.timings.duration, ep.errorRatePct, ep.thresholds, globalCfg.thresholds);
+    return !res.passed;
+  });
+
+  const overallPassed = globalEval.passed && !anyEndpointFailed;
+  const statusColor = overallPassed ? '#10b981' : '#ef4444';
+  const statusBadge = overallPassed ? 'PASSED' : 'SLA THRESHOLD EXCEEDED';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -463,28 +537,28 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
       </div>
       <div class="card">
         <div class="card-label">Global Error Rate</div>
-        <div class="card-val" style="color:${errorRatePct > 0 ? '#ef4444' : '#10b981'};">${errorRatePct.toFixed(2)}%</div>
-        <div class="card-sub">Iterations: ${iterations}</div>
+        <div class="card-val" style="color:${errorRatePct > globalEval.limits.maxErrorRatePct ? '#ef4444' : '#10b981'};">${errorRatePct.toFixed(2)}%</div>
+        <div class="card-sub">Limit: ${globalEval.limits.maxErrorRatePct.toFixed(2)}%</div>
       </div>
       <div class="card">
         <div class="card-label">Global p50 (Median)</div>
-        <div class="card-val">${formatDuration(globalTimings.duration.p50)}</div>
-        <div class="card-sub">Average (Avg): ${formatDuration(globalTimings.duration.avg)}</div>
+        <div class="card-val" style="color:${globalEval.limits.p50 && globalTimings.duration.p50 > globalEval.limits.p50 ? '#ef4444' : '#38bdf8'};">${formatDuration(globalTimings.duration.p50)}</div>
+        <div class="card-sub">${globalEval.limits.p50 ? `SLA: &le;${globalEval.limits.p50}ms` : `Avg: ${formatDuration(globalTimings.duration.avg)}`}</div>
       </div>
       <div class="card">
         <div class="card-label">Global p90</div>
-        <div class="card-val">${formatDuration(globalTimings.duration.p90)}</div>
-        <div class="card-sub">Min: ${formatDuration(globalTimings.duration.min)}</div>
+        <div class="card-val" style="color:${globalEval.limits.p90 && globalTimings.duration.p90 > globalEval.limits.p90 ? '#ef4444' : '#818cf8'};">${formatDuration(globalTimings.duration.p90)}</div>
+        <div class="card-sub">${globalEval.limits.p90 ? `SLA: &le;${globalEval.limits.p90}ms` : `Min: ${formatDuration(globalTimings.duration.min)}`}</div>
       </div>
       <div class="card">
         <div class="card-label">Global p95</div>
-        <div class="card-val" style="color:#f59e0b;">${formatDuration(globalTimings.duration.p95)}</div>
-        <div class="card-sub">95th Percentile</div>
+        <div class="card-val" style="color:${globalEval.limits.p95 && globalTimings.duration.p95 > globalEval.limits.p95 ? '#ef4444' : '#f59e0b'};">${formatDuration(globalTimings.duration.p95)}</div>
+        <div class="card-sub">${globalEval.limits.p95 ? `SLA: &le;${globalEval.limits.p95}ms` : '95th Percentile'}</div>
       </div>
       <div class="card">
         <div class="card-label">Global p99</div>
-        <div class="card-val" style="color:#f43f5e;">${formatDuration(globalTimings.duration.p99)}</div>
-        <div class="card-sub">Max: ${formatDuration(globalTimings.duration.max)}</div>
+        <div class="card-val" style="color:${globalEval.limits.p99 && globalTimings.duration.p99 > globalEval.limits.p99 ? '#ef4444' : '#f43f5e'};">${formatDuration(globalTimings.duration.p99)}</div>
+        <div class="card-sub">${globalEval.limits.p99 ? `SLA: &le;${globalEval.limits.p99}ms` : `Max: ${formatDuration(globalTimings.duration.max)}`}</div>
       </div>
       <div class="card">
         <div class="card-label">Peak Concurrent VUs</div>
@@ -492,6 +566,24 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
         <div class="card-sub">Rx: ${formatBytes(dataReceived)} | Tx: ${formatBytes(dataSent)}</div>
       </div>
     </div>
+
+    ${
+      !overallPassed
+        ? `<div class="section" style="border-left: 5px solid #ef4444; background: #450a0a22;">
+            <div class="section-title" style="color:#f87171;">⚠️ SLA Threshold Status / Violations</div>
+            <ul style="margin:0; padding-left:20px; color:#fca5a5; font-size:13px; line-height:1.7;">
+              ${globalEval.violations.map((v) => `<li>[Global] ${escapeHtml(v)}</li>`).join('')}
+              ${endpointMetricsList
+                .map((ep) => {
+                  const r = evaluateThresholds(ep.timings.duration, ep.errorRatePct, ep.thresholds, globalCfg.thresholds);
+                  return r.violations.map((v) => `<li>[${escapeHtml(ep.name)}] ${escapeHtml(v)}</li>`).join('');
+                })
+                .filter(Boolean)
+                .join('')}
+            </ul>
+          </div>`
+        : ''
+    }
 
     <div class="section">
       <div class="section-title">
@@ -502,6 +594,7 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
           <tr>
             <th>Endpoint</th>
             <th>Service</th>
+            <th>SLA Status</th>
             <th>Peak VUs</th>
             <th>Requests (RPS)</th>
             <th>Error %</th>
@@ -517,24 +610,42 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
         </thead>
         <tbody>
           ${endpointMetricsList
-            .map(
-              (ep) => `
-            <tr>
+            .map((ep) => {
+              const epEval = evaluateThresholds(
+                ep.timings.duration,
+                ep.errorRatePct,
+                ep.thresholds,
+                globalCfg.thresholds
+              );
+              const epPassed = epEval.passed;
+              const epP50Exceeded = epEval.limits.p50 && ep.timings.duration.p50 > epEval.limits.p50;
+              const epP90Exceeded = epEval.limits.p90 && ep.timings.duration.p90 > epEval.limits.p90;
+              const epP95Exceeded = epEval.limits.p95 && ep.timings.duration.p95 > epEval.limits.p95;
+              const epP99Exceeded = epEval.limits.p99 && ep.timings.duration.p99 > epEval.limits.p99;
+              const epErrExceeded = ep.errorRatePct > epEval.limits.maxErrorRatePct;
+
+              return `
+            <tr style="${!epPassed ? 'background: #450a0a1a;' : ''}">
               <td><strong>${escapeHtml(ep.name)}</strong></td>
               <td><code>${escapeHtml(ep.service)}</code></td>
+              <td>
+                <span class="tag" style="color:${epPassed ? '#10b981' : '#ef4444'}; border-color:${epPassed ? '#10b98166' : '#ef444466'}; font-weight:700;">
+                  ${epPassed ? 'PASS' : 'FAIL'}
+                </span>
+              </td>
               <td>${ep.peakVUs}</td>
               <td>${ep.totalReqs} <span style="color:#94a3b8;">(${ep.rps.toFixed(2)}/s)</span></td>
-              <td style="color:${ep.errorRatePct > 0 ? '#ef4444' : '#10b981'}; font-weight:700;">${ep.errorRatePct.toFixed(2)}%</td>
+              <td style="color:${epErrExceeded ? '#ef4444' : '#10b981'}; font-weight:700;">${ep.errorRatePct.toFixed(2)}%</td>
               <td>${formatDuration(ep.timings.duration.min)}</td>
-              <td style="color:#38bdf8; font-weight:700;">${formatDuration(ep.timings.duration.p50)}</td>
+              <td style="color:${epP50Exceeded ? '#ef4444' : '#38bdf8'}; font-weight:700;">${formatDuration(ep.timings.duration.p50)}</td>
               <td>${formatDuration(ep.timings.duration.avg)}</td>
-              <td>${formatDuration(ep.timings.duration.p90)}</td>
-              <td style="color:#f59e0b; font-weight:700;">${formatDuration(ep.timings.duration.p95)}</td>
-              <td style="color:#f43f5e; font-weight:700;">${formatDuration(ep.timings.duration.p99)}</td>
+              <td style="color:${epP90Exceeded ? '#ef4444' : '#818cf8'}; font-weight:700;">${formatDuration(ep.timings.duration.p90)}</td>
+              <td style="color:${epP95Exceeded ? '#ef4444' : '#f59e0b'}; font-weight:700;">${formatDuration(ep.timings.duration.p95)}</td>
+              <td style="color:${epP99Exceeded ? '#ef4444' : '#f43f5e'}; font-weight:700;">${formatDuration(ep.timings.duration.p99)}</td>
               <td>${formatDuration(ep.timings.duration.max)}</td>
               <td style="white-space: nowrap;"><a href="report-${escapeHtml(ep.id)}.html" class="nav-pill" style="padding:4px 10px; font-size:12px; display:inline-block; white-space:nowrap; text-align:center;">View HTML →</a></td>
-            </tr>`
-            )
+            </tr>`;
+            })
             .join('')}
         </tbody>
       </table>
@@ -698,6 +809,52 @@ export function generateMultiReports(data, scriptConfig, outputDir, runTimestamp
   });
 
   // 3. Raw summary JSON including parsed per-endpoint summary for easy UI history inspection
+  const globalTimingsDuration = extractTrendStats(data.metrics?.http_req_duration);
+  const globalErrorRatePct = data.metrics?.http_req_failed?.values?.rate
+    ? data.metrics.http_req_failed.values.rate * 100
+    : 0;
+
+  const globalEvalSummary = evaluateThresholds(
+    globalTimingsDuration,
+    globalErrorRatePct,
+    scriptConfig.globalConfig?.thresholds,
+    scriptConfig.globalConfig?.thresholds
+  );
+
+  const endpointsSummary = endpointMetricsList.map((ep) => {
+    const epEval = evaluateThresholds(
+      ep.timings.duration,
+      ep.errorRatePct,
+      ep.thresholds,
+      scriptConfig.globalConfig?.thresholds
+    );
+    return {
+      id: ep.id,
+      name: ep.name,
+      service: ep.service,
+      peakVUs: ep.peakVUs,
+      totalReqs: ep.totalReqs,
+      totalRequests: ep.totalReqs,
+      rps: ep.rps,
+      failedReqs: ep.failedReqs,
+      errorRatePct: ep.errorRatePct,
+      duration: ep.timings.duration,
+      p50: ep.timings.duration.p50,
+      p90: ep.timings.duration.p90,
+      p95: ep.timings.duration.p95,
+      p99: ep.timings.duration.p99,
+      avg: ep.timings.duration.avg,
+      min: ep.timings.duration.min,
+      max: ep.timings.duration.max,
+      thresholdsPassed: epEval.passed,
+      violations: epEval.violations,
+      limits: epEval.limits,
+      reportFile: `report-${ep.id}.html`,
+    };
+  });
+
+  const allThresholdsPassed = globalEvalSummary.passed && endpointsSummary.every((ep) => ep.thresholdsPassed);
+
   outputs[`${cleanDir}/raw-summary.json`] = JSON.stringify(
     {
       runTimestamp,
@@ -705,26 +862,13 @@ export function generateMultiReports(data, scriptConfig, outputDir, runTimestamp
       baseUrl: scriptConfig.globalConfig?.baseUrl,
       stages: scriptConfig.globalConfig?.stages,
       scenarios: scriptConfig.scenarios || [],
-      endpointsSummary: endpointMetricsList.map((ep) => ({
-        id: ep.id,
-        name: ep.name,
-        service: ep.service,
-        peakVUs: ep.peakVUs,
-        totalReqs: ep.totalReqs,
-        totalRequests: ep.totalReqs,
-        rps: ep.rps,
-        failedReqs: ep.failedReqs,
-        errorRatePct: ep.errorRatePct,
-        duration: ep.timings.duration,
-        p50: ep.timings.duration.p50,
-        p90: ep.timings.duration.p90,
-        p95: ep.timings.duration.p95,
-        p99: ep.timings.duration.p99,
-        avg: ep.timings.duration.avg,
-        min: ep.timings.duration.min,
-        max: ep.timings.duration.max,
-        reportFile: `report-${ep.id}.html`,
-      })),
+      thresholdResults: {
+        passed: allThresholdsPassed,
+        globalPassed: globalEvalSummary.passed,
+        globalViolations: globalEvalSummary.violations,
+        globalLimits: globalEvalSummary.limits,
+      },
+      endpointsSummary,
     },
     null,
     2

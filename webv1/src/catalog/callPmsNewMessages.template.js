@@ -39,7 +39,10 @@ export const callPmsNewMessagesTemplate = {
   },
 
   defaultThresholds: {
-    p95MaxDurationMs: 65000,
+    p50MaxDurationMs: 2000,
+    p90MaxDurationMs: 30000,
+    p95MaxDurationMs: 60000,
+    p99MaxDurationMs: 65000,
     maxErrorRate: 0.01,
   },
 

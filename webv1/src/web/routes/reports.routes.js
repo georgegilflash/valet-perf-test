@@ -54,6 +54,8 @@ export function createReportsRouter(reportsDir) {
         // Extract quick global stats from rawSummary if available
         let summaryStats = null;
         const epSummaries = rawSummary?.endpointsSummary;
+        const thresholdResults = rawSummary?.thresholdResults ?? null;
+
         if (Array.isArray(epSummaries) && epSummaries.length > 0) {
           const totalReqs = epSummaries.reduce((acc, s) => acc + (s.totalRequests ?? s.totalReqs ?? 0), 0);
           const avgP50 = epSummaries.reduce((acc, s) => acc + (s.duration?.p50 ?? s.p50 ?? 0), 0) / epSummaries.length;
@@ -67,7 +69,8 @@ export function createReportsRouter(reportsDir) {
             p90: Number(avgP90.toFixed(2)),
             p95: Number(avgP95.toFixed(2)),
             p99: Number(avgP99.toFixed(2)),
-            avg: Number(avgDur.toFixed(2))
+            avg: Number(avgDur.toFixed(2)),
+            thresholdsPassed: thresholdResults ? thresholdResults.passed : null
           };
         } else if (rawSummary?.metrics?.http_req_duration?.values) {
           const httpReqs = rawSummary?.metrics?.http_reqs?.values?.count ?? null;
@@ -78,7 +81,8 @@ export function createReportsRouter(reportsDir) {
             p90: httpDurValues['p(90)'] ? Number(httpDurValues['p(90)'].toFixed(2)) : null,
             p95: httpDurValues['p(95)'] ? Number(httpDurValues['p(95)'].toFixed(2)) : null,
             p99: httpDurValues['p(99)'] ? Number(httpDurValues['p(99)'].toFixed(2)) : null,
-            avg: httpDurValues.avg ? Number(httpDurValues.avg.toFixed(2)) : null
+            avg: httpDurValues.avg ? Number(httpDurValues.avg.toFixed(2)) : null,
+            thresholdsPassed: thresholdResults ? thresholdResults.passed : null
           };
         }
 
@@ -93,7 +97,8 @@ export function createReportsRouter(reportsDir) {
           generalReportUrl: `/reports/${folderName}/report-general.html`,
           scriptJsonUrl: `/reports/${folderName}/test-performance-script.json`,
           endpointReports,
-          summaryStats
+          summaryStats,
+          thresholdResults
         };
       });
 

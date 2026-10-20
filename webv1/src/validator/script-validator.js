@@ -193,14 +193,20 @@ function validateStepDefinition(step, label, maxVuForScenario, errors, warnings)
 
   // Thresholds validation
   if (step.thresholds && typeof step.thresholds === 'object') {
-    if (
-      step.thresholds.p95MaxDurationMs !== undefined &&
-      (typeof step.thresholds.p95MaxDurationMs !== 'number' || step.thresholds.p95MaxDurationMs <= 0)
-    ) {
-      errors.push(`${label}: "thresholds.p95MaxDurationMs" must be a positive number in ms.`);
-    }
+    const percentiles = ['p50MaxDurationMs', 'p90MaxDurationMs', 'p95MaxDurationMs', 'p99MaxDurationMs'];
+    percentiles.forEach((pKey) => {
+      if (
+        step.thresholds[pKey] !== undefined &&
+        step.thresholds[pKey] !== null &&
+        (typeof step.thresholds[pKey] !== 'number' || step.thresholds[pKey] <= 0)
+      ) {
+        errors.push(`${label}: "thresholds.${pKey}" must be a positive number in ms.`);
+      }
+    });
+
     if (
       step.thresholds.maxErrorRate !== undefined &&
+      step.thresholds.maxErrorRate !== null &&
       (typeof step.thresholds.maxErrorRate !== 'number' ||
         step.thresholds.maxErrorRate < 0 ||
         step.thresholds.maxErrorRate > 1)
@@ -251,6 +257,26 @@ export function validatePerformanceScript(script) {
       errors.push('"globalConfig.baseUrl" is required and must be a string.');
     } else if (!/^https?:\/\/.+/i.test(globalConfig.baseUrl.trim())) {
       errors.push('"globalConfig.baseUrl" must start with http:// or https://.');
+    }
+
+    if (globalConfig.thresholds && typeof globalConfig.thresholds === 'object') {
+      const gThresh = globalConfig.thresholds;
+      ['p50MaxDurationMs', 'p90MaxDurationMs', 'p95MaxDurationMs', 'p99MaxDurationMs'].forEach((k) => {
+        if (
+          gThresh[k] !== undefined &&
+          gThresh[k] !== null &&
+          (typeof gThresh[k] !== 'number' || gThresh[k] <= 0)
+        ) {
+          errors.push(`"globalConfig.thresholds.${k}" must be a positive number in ms.`);
+        }
+      });
+      if (
+        gThresh.maxErrorRate !== undefined &&
+        gThresh.maxErrorRate !== null &&
+        (typeof gThresh.maxErrorRate !== 'number' || gThresh.maxErrorRate < 0 || gThresh.maxErrorRate > 1)
+      ) {
+        errors.push('"globalConfig.thresholds.maxErrorRate" must be between 0 and 1 (e.g. 0.01 for 1%).');
+      }
     }
 
     if (!Array.isArray(globalConfig.stages) || globalConfig.stages.length === 0) {

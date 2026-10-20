@@ -39,7 +39,10 @@ export const callSignNewMessagesTemplate = {
   },
 
   defaultThresholds: {
-    p95MaxDurationMs: 95000,
+    p50MaxDurationMs: 2000,
+    p90MaxDurationMs: 45000,
+    p95MaxDurationMs: 90000,
+    p99MaxDurationMs: 95000,
     maxErrorRate: 0.01,
   },
 

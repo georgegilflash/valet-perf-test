@@ -1,6 +1,9 @@
 import {
   state,
+  DEFAULT_GLOBAL_THRESHOLDS,
   saveStagesToLocalStorage,
+  saveThresholdsToLocalStorage,
+  loadThresholdsFromLocalStorage,
   escapeHtml,
   showToast
 } from './state.js';
@@ -69,6 +72,13 @@ export function buildScriptJsonFromState() {
       environment,
       baseUrl,
       maxErrorRate: 0.01,
+      thresholds: {
+        p50MaxDurationMs: state.globalThresholds?.p50 ?? 500,
+        p90MaxDurationMs: state.globalThresholds?.p90 ?? 1000,
+        p95MaxDurationMs: state.globalThresholds?.p95 ?? 2500,
+        p99MaxDurationMs: state.globalThresholds?.p99 ?? 5000,
+        maxErrorRate: state.globalThresholds?.maxErrorRate ?? 0.01,
+      },
       stages: JSON.parse(JSON.stringify(state.stages))
     },
     scenarios,
@@ -76,7 +86,42 @@ export function buildScriptJsonFromState() {
   };
 }
 
+export function renderGlobalThresholdInputs() {
+  const p50Input = document.getElementById('global-thresh-p50');
+  const p90Input = document.getElementById('global-thresh-p90');
+  const p95Input = document.getElementById('global-thresh-p95');
+  const p99Input = document.getElementById('global-thresh-p99');
+
+  if (p50Input) p50Input.value = state.globalThresholds?.p50 ?? DEFAULT_GLOBAL_THRESHOLDS.p50;
+  if (p90Input) p90Input.value = state.globalThresholds?.p90 ?? DEFAULT_GLOBAL_THRESHOLDS.p90;
+  if (p95Input) p95Input.value = state.globalThresholds?.p95 ?? DEFAULT_GLOBAL_THRESHOLDS.p95;
+  if (p99Input) p99Input.value = state.globalThresholds?.p99 ?? DEFAULT_GLOBAL_THRESHOLDS.p99;
+}
+
+export function onGlobalThresholdInputChange(metric, value) {
+  const num = parseInt(value, 10);
+  if (!state.globalThresholds) {
+    state.globalThresholds = { ...DEFAULT_GLOBAL_THRESHOLDS };
+  }
+  if (!isNaN(num) && num > 0) {
+    state.globalThresholds[metric] = num;
+  } else {
+    state.globalThresholds[metric] = DEFAULT_GLOBAL_THRESHOLDS[metric];
+  }
+  saveThresholdsToLocalStorage();
+  syncJsonFromVisualForm();
+}
+
+export function resetGlobalThresholdsToDefault() {
+  state.globalThresholds = { ...DEFAULT_GLOBAL_THRESHOLDS };
+  saveThresholdsToLocalStorage();
+  renderGlobalThresholdInputs();
+  syncJsonFromVisualForm();
+  showToast('Global response time thresholds reset to default SLA values', 'info');
+}
+
 export function syncJsonFromVisualForm() {
+  renderGlobalThresholdInputs();
   const scriptObj = buildScriptJsonFromState();
   const editor = document.getElementById('json-editor-textarea');
   if (editor) {
@@ -322,6 +367,18 @@ export function applyScriptJsonToVisualState(scriptObj, options = {}, callbacks 
     }));
     saveStagesToLocalStorage();
     renderStages();
+  }
+
+  if (gc.thresholds && typeof gc.thresholds === 'object') {
+    state.globalThresholds = {
+      p50: Number(gc.thresholds.p50MaxDurationMs) || DEFAULT_GLOBAL_THRESHOLDS.p50,
+      p90: Number(gc.thresholds.p90MaxDurationMs) || DEFAULT_GLOBAL_THRESHOLDS.p90,
+      p95: Number(gc.thresholds.p95MaxDurationMs) || DEFAULT_GLOBAL_THRESHOLDS.p95,
+      p99: Number(gc.thresholds.p99MaxDurationMs) || DEFAULT_GLOBAL_THRESHOLDS.p99,
+      maxErrorRate: Number(gc.thresholds.maxErrorRate) || DEFAULT_GLOBAL_THRESHOLDS.maxErrorRate,
+    };
+    saveThresholdsToLocalStorage();
+    renderGlobalThresholdInputs();
   }
 
   const importedScenarios = Array.isArray(scriptObj.scenarios) ? scriptObj.scenarios : [];

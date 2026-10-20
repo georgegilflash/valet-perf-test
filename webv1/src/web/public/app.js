@@ -8,6 +8,7 @@ import {
   loadStagesFromLocalStorage,
   loadEnvironmentFromLocalStorage,
   saveEnvironmentToLocalStorage,
+  loadThresholdsFromLocalStorage,
   showToast,
   escapeHtml
 } from './modules/state.js';
@@ -73,7 +74,10 @@ import {
   renderScriptVisualSummary,
   exportScriptJson,
   applyScriptJsonToVisualState,
-  importScriptJson
+  importScriptJson,
+  renderGlobalThresholdInputs,
+  onGlobalThresholdInputChange,
+  resetGlobalThresholdsToDefault
 } from './modules/script.view.js';
 
 import {
@@ -215,6 +219,9 @@ Object.assign(window, {
   exportScriptJson,
   applyScriptJsonToVisualState,
   importScriptJson,
+  renderGlobalThresholdInputs,
+  onGlobalThresholdInputChange,
+  resetGlobalThresholdsToDefault,
 
   // Live View
   initCharts,
@@ -238,6 +245,8 @@ Object.assign(window, {
 document.addEventListener('DOMContentLoaded', async () => {
   loadStagesFromLocalStorage();
   loadEnvironmentFromLocalStorage((env) => onEnvironmentChange(env, false));
+  loadThresholdsFromLocalStorage();
+  renderGlobalThresholdInputs();
   await loadCatalogAndPools();
   renderStages();
   renderCatalogSelector();

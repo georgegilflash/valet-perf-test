@@ -6,6 +6,15 @@ export const STAGES_STORAGE_KEY = 'valet_perf_studio_stages_v1';
 export const ENV_STORAGE_KEY = 'valet_perf_studio_env_v1';
 export const LAYOUTS_STORAGE_KEY = 'valet_perf_saved_layouts_v1';
 export const LAST_RUNS_STORAGE_KEY = 'valet_perf_last_runs_v1';
+export const THRESHOLDS_STORAGE_KEY = 'valet_perf_default_thresholds_v1';
+
+export const DEFAULT_GLOBAL_THRESHOLDS = {
+  p50: 500,
+  p90: 1000,
+  p95: 2500,
+  p99: 5000,
+  maxErrorRate: 0.01
+};
 
 export const DEFAULT_STAGES = [
   { name: 'Stage 1 (Warm-up)', duration: '30s' },
@@ -24,6 +33,7 @@ export const state = {
     userGuids: []
   },
   stages: JSON.parse(JSON.stringify(DEFAULT_STAGES)),
+  globalThresholds: { ...DEFAULT_GLOBAL_THRESHOLDS },
   endpointsState: {},
   scenarios: [],
   activeScenarioId: null,
@@ -89,6 +99,33 @@ export function saveEnvironmentToLocalStorage(env) {
     window.localStorage.setItem(ENV_STORAGE_KEY, env);
   } catch (err) {
     console.warn('Could not save environment to localStorage:', err);
+  }
+}
+
+export function loadThresholdsFromLocalStorage() {
+  try {
+    const raw = window.localStorage.getItem(THRESHOLDS_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      state.globalThresholds = {
+        p50: Number(parsed.p50) || DEFAULT_GLOBAL_THRESHOLDS.p50,
+        p90: Number(parsed.p90) || DEFAULT_GLOBAL_THRESHOLDS.p90,
+        p95: Number(parsed.p95) || DEFAULT_GLOBAL_THRESHOLDS.p95,
+        p99: Number(parsed.p99) || DEFAULT_GLOBAL_THRESHOLDS.p99,
+        maxErrorRate: Number(parsed.maxErrorRate) || DEFAULT_GLOBAL_THRESHOLDS.maxErrorRate,
+      };
+    }
+  } catch (err) {
+    console.warn('Could not load saved thresholds from localStorage:', err);
+  }
+}
+
+export function saveThresholdsToLocalStorage() {
+  try {
+    window.localStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(state.globalThresholds));
+  } catch (err) {
+    console.warn('Could not save thresholds to localStorage:', err);
   }
 }
 

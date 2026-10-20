@@ -39,7 +39,10 @@ export const callKioskPingTemplate = {
   },
 
   defaultThresholds: {
-    p95MaxDurationMs: 2000,
+    p50MaxDurationMs: 200,
+    p90MaxDurationMs: 500,
+    p95MaxDurationMs: 1000,
+    p99MaxDurationMs: 2000,
     maxErrorRate: 0.01,
   },
 

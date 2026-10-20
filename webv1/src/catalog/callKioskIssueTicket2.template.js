@@ -42,7 +42,10 @@ export const callKioskIssueTicket2Template = {
   },
 
   defaultThresholds: {
-    p95MaxDurationMs: 3000,
+    p50MaxDurationMs: 500,
+    p90MaxDurationMs: 1000,
+    p95MaxDurationMs: 2000,
+    p99MaxDurationMs: 4000,
     maxErrorRate: 0.01,
   },
 

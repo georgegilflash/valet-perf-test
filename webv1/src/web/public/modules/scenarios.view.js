@@ -85,7 +85,10 @@ export async function loadCatalogAndPools() {
           ...(tpl.dataRequirements?.customParams || {})
         },
         thresholds: {
-          p95MaxDurationMs: tpl.defaultThresholds?.p95MaxDurationMs ?? 5000,
+          p50MaxDurationMs: tpl.defaultThresholds?.p50MaxDurationMs ?? 500,
+          p90MaxDurationMs: tpl.defaultThresholds?.p90MaxDurationMs ?? 1000,
+          p95MaxDurationMs: tpl.defaultThresholds?.p95MaxDurationMs ?? 2500,
+          p99MaxDurationMs: tpl.defaultThresholds?.p99MaxDurationMs ?? 5000,
           maxErrorRate: tpl.defaultThresholds?.maxErrorRate ?? 0.01
         },
         assertions: (tpl.availableAssertions || []).map((a) => ({
@@ -613,11 +616,46 @@ export function renderSelectedEndpointsConfig() {
                         `
                         }
                       </div>
-                      <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
-                        <label class="block text-[10px] text-slate-400">Threshold p95 (ms)</label>
-                        <input type="number" step="100" min="100" value="${step.thresholds?.p95MaxDurationMs ?? 5000}"
-                          oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p95MaxDurationMs', parseInt(this.value, 10) || 1000)"
-                          class="w-full bg-transparent text-xs font-mono text-amber-300 focus:outline-none" />
+                      <!-- Thresholds SLA (p50, p90, p95, p99) -->
+                      <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                          <label class="block text-[10px] text-slate-400 font-semibold">Response Time Thresholds (ms)</label>
+                          <span class="text-[9px] text-slate-500 font-mono">inherits global if empty</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
+                            <span class="block text-[8px] text-emerald-400 font-mono font-bold">p50 (ms)</span>
+                            <input type="number" step="50" min="0"
+                              value="${step.thresholds?.p50MaxDurationMs !== undefined ? step.thresholds.p50MaxDurationMs : ''}"
+                              placeholder="Global (${state.globalThresholds?.p50 ?? 500})"
+                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p50MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                              class="w-full bg-transparent text-xs font-mono text-emerald-300 focus:outline-none" />
+                          </div>
+                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
+                            <span class="block text-[8px] text-sky-400 font-mono font-bold">p90 (ms)</span>
+                            <input type="number" step="50" min="0"
+                              value="${step.thresholds?.p90MaxDurationMs !== undefined ? step.thresholds.p90MaxDurationMs : ''}"
+                              placeholder="Global (${state.globalThresholds?.p90 ?? 1000})"
+                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p90MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                              class="w-full bg-transparent text-xs font-mono text-sky-300 focus:outline-none" />
+                          </div>
+                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
+                            <span class="block text-[8px] text-amber-400 font-mono font-bold">p95 (ms)</span>
+                            <input type="number" step="50" min="0"
+                              value="${step.thresholds?.p95MaxDurationMs !== undefined ? step.thresholds.p95MaxDurationMs : ''}"
+                              placeholder="Global (${state.globalThresholds?.p95 ?? 2500})"
+                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p95MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                              class="w-full bg-transparent text-xs font-mono text-amber-300 focus:outline-none" />
+                          </div>
+                          <div class="bg-slate-950 border border-slate-800 rounded-lg p-1.5">
+                            <span class="block text-[8px] text-rose-400 font-mono font-bold">p99 (ms)</span>
+                            <input type="number" step="50" min="0"
+                              value="${step.thresholds?.p99MaxDurationMs !== undefined ? step.thresholds.p99MaxDurationMs : ''}"
+                              placeholder="Global (${state.globalThresholds?.p99 ?? 5000})"
+                              oninput="updateStepThreshold('${sc.id}', ${stepIdx}, 'p99MaxDurationMs', this.value === '' ? null : parseInt(this.value, 10))"
+                              class="w-full bg-transparent text-xs font-mono text-rose-300 focus:outline-none" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
