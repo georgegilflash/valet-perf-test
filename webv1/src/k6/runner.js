@@ -278,6 +278,29 @@ function executeStep(step, stepOrder, scenarioObj, iterationContext = {}) {
       check(res, checksObj);
     }
 
+    // Record dynamic metadata checks for reporting (Used ID and created/queried/completed tickets)
+    if (selectedId) {
+      check(null, {
+        [`__VALET_USED_ID__:${epId}:${selectedId}`]: () => true
+      });
+    }
+
+    if (epId === 'callKioskIssueTicket2' && iterationContext && iterationContext.ticketID) {
+      const num = iterationContext.ticketNumber || 'N/A';
+      check(null, {
+        [`__VALET_TICKET_ISSUED__:${iterationContext.ticketID}:${num}`]: () => true
+      });
+    } else if (epId === 'callKioskGetTicket' && iterationContext && iterationContext.ticketID) {
+      check(null, {
+        [`__VALET_TICKET_QUERIED__:${iterationContext.ticketID}`]: () => true
+      });
+    } else if (epId === 'callKioskCompleteTicket1' && iterationContext && iterationContext.ticketID) {
+      const num = iterationContext.ticketNumber || 'N/A';
+      check(null, {
+        [`__VALET_TICKET_COMPLETED__:${iterationContext.ticketID}:${num}`]: () => true
+      });
+    }
+
     const isSuccess = res.status === 200 && !hasFault && allAssertionsPassed;
     const durationMs = res.timings?.duration || 0;
 

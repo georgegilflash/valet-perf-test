@@ -255,8 +255,42 @@ function extractEndpointMetrics(data, ep) {
     receiving: extractTrendStats(m[`${prefix}_receiving`]),
   };
 
-  const checks = findEndpointGroupChecks(data.root_group, ep.id);
+  const rawChecks = findEndpointGroupChecks(data.root_group, ep.id);
+  const checks = rawChecks.filter((c) => !c.name.startsWith('__VALET_'));
   const peakVUs = Array.isArray(ep.usersPerStage) ? Math.max(...ep.usersPerStage, 0) : 0;
+
+  // Extract dynamically tracked metadata from all checks in the test run
+  const allChecks = collectGroupChecks(data.root_group, []);
+
+  // 1. Used IDs for this endpoint
+  const usedIdPrefix = `__VALET_USED_ID__:${ep.id}:`;
+  const usedIds = allChecks
+    .filter((c) => c.name.startsWith(usedIdPrefix))
+    .map((c) => c.name.slice(usedIdPrefix.length));
+
+  // 2. Tickets Issued (for callKioskIssueTicket2)
+  const ticketsIssuedPrefix = '__VALET_TICKET_ISSUED__:';
+  const ticketsIssued = allChecks
+    .filter((c) => c.name.startsWith(ticketsIssuedPrefix))
+    .map((c) => {
+      const parts = c.name.slice(ticketsIssuedPrefix.length).split(':');
+      return { ticketID: parts[0], ticketNumber: parts[1] || '' };
+    });
+
+  // 3. Tickets Queried (for callKioskGetTicket)
+  const ticketsQueriedPrefix = '__VALET_TICKET_QUERIED__:';
+  const ticketsQueried = allChecks
+    .filter((c) => c.name.startsWith(ticketsQueriedPrefix))
+    .map((c) => c.name.slice(ticketsQueriedPrefix.length));
+
+  // 4. Tickets Completed (for callKioskCompleteTicket1)
+  const ticketsCompletedPrefix = '__VALET_TICKET_COMPLETED__:';
+  const ticketsCompleted = allChecks
+    .filter((c) => c.name.startsWith(ticketsCompletedPrefix))
+    .map((c) => {
+      const parts = c.name.slice(ticketsCompletedPrefix.length).split(':');
+      return { ticketID: parts[0], ticketNumber: parts[1] || '' };
+    });
 
   return {
     id: ep.id,
@@ -282,7 +316,130 @@ function extractEndpointMetrics(data, ep) {
     dataReceived,
     timings,
     checks,
+    usedIds,
+    ticketsIssued,
+    ticketsQueried,
+    ticketsCompleted,
   };
+}
+
+function buildExecutedTicketsHtml(epMetrics) {
+  if (epMetrics.id === 'callKioskIssueTicket2') {
+    const list = epMetrics.ticketsIssued || [];
+    if (list.length === 0) {
+      return `
+      <div style="margin-top:16px; padding:12px; background:#0f172a; border-radius:8px; border:1px solid #334155;">
+        <div style="font-size:13px; font-weight:700; color:#38bdf8; margin-bottom:4px;">🎟️ Tickets Created / Issued:</div>
+        <div style="color:#94a3b8; font-size:12px;">No ticket creation records captured during this run.</div>
+      </div>`;
+    }
+    return `
+    <div style="margin-top:16px; padding:12px; background:#0f172a; border-radius:8px; border:1px solid #334155;">
+      <div style="font-size:13px; font-weight:700; color:#38bdf8; margin-bottom:8px;">
+        🎟️ Tickets Created / Issued (${list.length} tickets):
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${list
+          .map(
+            (t, idx) => `
+          <div style="font-size:12px; font-family:monospace; background:#1e293b; padding:6px 10px; border-radius:6px; border:1px solid #475569; display:flex; align-items:center; gap:8px;">
+            <span style="color:#94a3b8; font-weight:bold;">#${idx + 1}</span>
+            <span style="color:#e2e8f0;">TicketID: <strong style="color:#38bdf8;">${escapeHtml(t.ticketID)}</strong></span>
+            ${t.ticketNumber ? `<span style="color:#cbd5e1; margin-left:auto;">Ticket Number: <code style="color:#34d399;">${escapeHtml(t.ticketNumber)}</code></span>` : ''}
+          </div>`
+          )
+          .join('')}
+      </div>
+    </div>`;
+  }
+
+  if (epMetrics.id === 'callKioskGetTicket') {
+    const list = epMetrics.ticketsQueried || [];
+    if (list.length === 0) {
+      return `
+      <div style="margin-top:16px; padding:12px; background:#0f172a; border-radius:8px; border:1px solid #334155;">
+        <div style="font-size:13px; font-weight:700; color:#38bdf8; margin-bottom:4px;">🔍 Tickets Queried / Called:</div>
+        <div style="color:#94a3b8; font-size:12px;">No ticket query records captured during this run.</div>
+      </div>`;
+    }
+    return `
+    <div style="margin-top:16px; padding:12px; background:#0f172a; border-radius:8px; border:1px solid #334155;">
+      <div style="font-size:13px; font-weight:700; color:#38bdf8; margin-bottom:8px;">
+        🔍 Tickets Queried / Called (${list.length} tickets):
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${list
+          .map(
+            (tid, idx) => `
+          <div style="font-size:12px; font-family:monospace; background:#1e293b; padding:6px 10px; border-radius:6px; border:1px solid #475569; display:flex; align-items:center; gap:8px;">
+            <span style="color:#94a3b8; font-weight:bold;">#${idx + 1}</span>
+            <span style="color:#e2e8f0;">Queried TicketID: <strong style="color:#38bdf8;">${escapeHtml(tid)}</strong></span>
+          </div>`
+          )
+          .join('')}
+      </div>
+    </div>`;
+  }
+
+  if (epMetrics.id === 'callKioskCompleteTicket1') {
+    const list = epMetrics.ticketsCompleted || [];
+    if (list.length === 0) {
+      return `
+      <div style="margin-top:16px; padding:12px; background:#0f172a; border-radius:8px; border:1px solid #334155;">
+        <div style="font-size:13px; font-weight:700; color:#38bdf8; margin-bottom:4px;">✅ Tickets Completed:</div>
+        <div style="color:#94a3b8; font-size:12px;">No ticket completion records captured during this run.</div>
+      </div>`;
+    }
+    return `
+    <div style="margin-top:16px; padding:12px; background:#0f172a; border-radius:8px; border:1px solid #334155;">
+      <div style="font-size:13px; font-weight:700; color:#38bdf8; margin-bottom:8px;">
+        ✅ Tickets Completed (${list.length} tickets):
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${list
+          .map(
+            (t, idx) => `
+          <div style="font-size:12px; font-family:monospace; background:#1e293b; padding:6px 10px; border-radius:6px; border:1px solid #475569; display:flex; align-items:center; gap:8px;">
+            <span style="color:#94a3b8; font-weight:bold;">#${idx + 1}</span>
+            <span style="color:#e2e8f0;">Completed TicketID: <strong style="color:#38bdf8;">${escapeHtml(t.ticketID)}</strong></span>
+            ${t.ticketNumber ? `<span style="color:#cbd5e1; margin-left:auto;">Ticket Number: <code style="color:#34d399;">${escapeHtml(t.ticketNumber)}</code></span>` : ''}
+          </div>`
+          )
+          .join('')}
+      </div>
+    </div>`;
+  }
+
+  return '';
+}
+
+function renderExecutedIdsAndTicketsHtml(epMetrics) {
+  const usedList = epMetrics.usedIds || [];
+  const idKeys = ['locationIds', 'kioskIds', 'userGuids', 'tokens', 'customIds'].filter((k) =>
+    Array.isArray(epMetrics.data?.[k])
+  );
+
+  let primaryIdHtml = '';
+  if (usedList.length > 0) {
+    const primaryKey = idKeys[0] || 'IDs';
+    primaryIdHtml = `
+      <div>
+        <div style="font-size:12px; color:#94a3b8; margin-bottom:6px;">
+          <strong>${escapeHtml(primaryKey)}</strong> (${usedList.length} unique ID${usedList.length === 1 ? '' : 's'} used during run | Selection Mode: <code>${escapeHtml(epMetrics.data?.selectionMode || 'random')}</code> | XML Tag: <code>&lt;${escapeHtml(epMetrics.data?.xmlElement || 'id')}&gt;</code>):
+        </div>
+        <div>
+          ${usedList.map((id) => `<span class="tag" style="background:#0284c722; color:#38bdf8; border-color:#0284c7;">${escapeHtml(id)}</span>`).join('')}
+        </div>
+      </div>`;
+  } else if (idKeys.length > 0) {
+    primaryIdHtml = `<p style="color:#94a3b8; margin:0;">No IDs from the configured pool were selected during this run.</p>`;
+  } else {
+    primaryIdHtml = `<p style="color:#94a3b8; margin:0;">No specific ID list configured.</p>`;
+  }
+
+  const ticketsHtml = buildExecutedTicketsHtml(epMetrics);
+
+  return primaryIdHtml + ticketsHtml;
 }
 
 /**
@@ -302,23 +459,6 @@ function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimest
   const statusColor = isPassed ? '#10b981' : '#ef4444';
   const statusBadge = isPassed ? 'PASSED' : 'SLA THRESHOLD EXCEEDED';
   const maxErrAllowedPct = evalResult.limits.maxErrorRatePct.toFixed(2);
-
-  const idKeys = ['locationIds', 'kioskIds', 'userGuids', 'tokens', 'customIds'].filter((k) =>
-    Array.isArray(epMetrics.data?.[k])
-  );
-
-  const idsHtml = idKeys
-    .map((key) => {
-      const list = epMetrics.data[key] || [];
-      return `
-      <div style="margin-top:10px;">
-        <div style="font-size:12px; color:#94a3b8; margin-bottom:6px;">
-          <strong>${escapeHtml(key)}</strong> (${list.length} configured IDs | Selection Mode: <code>${escapeHtml(epMetrics.data.selectionMode || 'random')}</code> | XML Tag: <code>&lt;${escapeHtml(epMetrics.data.xmlElement || 'id')}&gt;</code>):
-        </div>
-        <div>${list.map((id) => `<span class="tag">${escapeHtml(id)}</span>`).join('')}</div>
-      </div>`;
-    })
-    .join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -446,8 +586,8 @@ function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimest
     </div>
 
     <div class="section">
-      <div class="section-title">🗂️ Confirmed IDs List Used in this Run</div>
-      ${idsHtml || '<p style="color:#94a3b8;">No specific ID list configured.</p>'}
+      <div class="section-title">🗂️ IDs & Specific Data Executed in this Run</div>
+      ${renderExecutedIdsAndTicketsHtml(epMetrics)}
     </div>
   </div>
 </body>
@@ -888,6 +1028,10 @@ export function generateMultiReports(data, scriptConfig, outputDir, runTimestamp
       violations: epEval.violations,
       limits: epEval.limits,
       reportFile: `report-${ep.id}.html`,
+      usedIds: ep.usedIds || [],
+      ticketsIssued: ep.ticketsIssued || [],
+      ticketsQueried: ep.ticketsQueried || [],
+      ticketsCompleted: ep.ticketsCompleted || [],
     };
   });
 
