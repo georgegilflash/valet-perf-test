@@ -17,7 +17,7 @@ const STAGE_2_TARGET = 5000;  // e.g. 10
 const STAGE_2_DURATION = null; // e.g. '2m'
 
 // Stage 3: Reach peak
-const STAGE_3_TARGET = 10000;  // e.g. 20
+const STAGE_3_TARGET = 9000;  // e.g. 20
 const STAGE_3_DURATION = null; // e.g. '3m'
 
 // Stage 4: Maintain steady state

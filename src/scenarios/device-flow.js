@@ -185,21 +185,21 @@ export function callKioskGetKnownDrivers(customParams = {}) {
   });
 
   deviceMetrics.getKnownDriversDuration.add(res.timings.duration);
-  if (!isSuccess) deviceMetrics.totalErrors.add(1);
 
-  if (isSuccess) {
-    console.log(
-      `[VU ${__VU}] [Kiosk GetKnownDrivers] OK (200) in ${durationSec}s | Kiosk: ${kioskId} | From: ${fromDate} | Records: ${returnedCount}/${count} | Dates>From: ${areDatesAfterFrom}`
-    );
-  } else {
-    console.log(
+  if (!isSuccess) {
+    deviceMetrics.totalErrors.add(1);
+        console.log(
       `[VU ${__VU}] [Kiosk GetKnownDrivers] FAILED (${res.status}) in ${durationSec}s | Kiosk: ${kioskId} | From: ${fromDate} | Records: ${returnedCount}/${count} | Dates>From: ${areDatesAfterFrom} | Code: ${resultCode || 'Error'} | Reason: ${description || 'Validation/HTTP Error'}`
     );
+  } else {
+  // console.log(
+    //   `[VU ${__VU}] [Kiosk GetKnownDrivers] OK (200) in ${durationSec}s | Kiosk: ${kioskId} | From: ${fromDate} | Records: ${returnedCount}/${count} | Dates>From: ${areDatesAfterFrom}`
+    // );
   }
 
-  if (config.debugResponse || !isSuccess) {
-    console.log(`--- [VU ${__VU}] [Kiosk GetKnownDrivers Response] ---\n${formatXml(res.body)}\n-----------------------------`);
-  }
+  // if (config.debugResponse || !isSuccess) {
+  //   console.log(`--- [VU ${__VU}] [Kiosk GetKnownDrivers Response] ---\n${formatXml(res.body)}\n-----------------------------`);
+  // }
 
   return res;
 }
@@ -333,21 +333,22 @@ export function callKioskGetKnownDriverChanges(customParams = {}) {
   });
 
   deviceMetrics.getKnownDriverChangesDuration.add(res.timings.duration);
-  if (!isSuccess) deviceMetrics.totalErrors.add(1);
 
-  if (isSuccess) {
-    console.log(
-      `[VU ${__VU}] [Kiosk GetKnownDriverChanges] OK (200) in ${durationSec}s | Kiosk: ${kioskId} | Date: ${sentDateFormatted} | Total: ${returnedTotalDisplay}/${total} | SameDate: ${isDateSame}`
-    );
-  } else {
-    console.log(
+  if (!isSuccess) {
+    deviceMetrics.totalErrors.add(1);
+        console.log(
       `[VU ${__VU}] [Kiosk GetKnownDriverChanges] FAILED (${res.status}) in ${durationSec}s | Kiosk: ${kioskId} | Date: ${sentDateFormatted} | Total: ${returnedTotalDisplay}/${total} | SameDate: ${isDateSame} | Code: ${resultCode || 'Error'} | Reason: ${description || 'Validation/HTTP Error'}`
     );
-  }
+  } 
+  // else {
+    // console.log(
+    //   `[VU ${__VU}] [Kiosk GetKnownDriverChanges] OK (200) in ${durationSec}s | Kiosk: ${kioskId} | Date: ${sentDateFormatted} | Total: ${returnedTotalDisplay}/${total} | SameDate: ${isDateSame}`
+    // );
+  // }
 
-  if (config.debugResponse || !isSuccess) {
-    console.log(`--- [VU ${__VU}] [Kiosk GetKnownDriverChanges Response] ---\n${formatXml(res.body)}\n-----------------------------`);
-  }
+  // if (config.debugResponse || !isSuccess) {
+  //   console.log(`--- [VU ${__VU}] [Kiosk GetKnownDriverChanges Response] ---\n${formatXml(res.body)}\n-----------------------------`);
+  // }
 
   return res;
 }
