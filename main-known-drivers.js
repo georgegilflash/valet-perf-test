@@ -9,23 +9,23 @@ import { config } from './config/env.js';
 // STAGES CONFIGURATION (Modify directly here per endpoint, or leave null to use .env)
 // ==============================================================================
 // Stage 1: Warm-up
-const STAGE_1_TARGET = 5;   // e.g. 5
+const STAGE_1_TARGET = 1000;   // e.g. 5
 const STAGE_1_DURATION = null; // e.g. '1m'
 
 // Stage 2: Ramp-up
-const STAGE_2_TARGET = 1;  // e.g. 10
+const STAGE_2_TARGET = 5000;  // e.g. 10
 const STAGE_2_DURATION = null; // e.g. '2m'
 
 // Stage 3: Reach peak
-const STAGE_3_TARGET = 2;  // e.g. 20
+const STAGE_3_TARGET = 10000;  // e.g. 20
 const STAGE_3_DURATION = null; // e.g. '3m'
 
 // Stage 4: Maintain steady state
-const STAGE_4_TARGET = 1;  // e.g. 10
+const STAGE_4_TARGET = 5000;  // e.g. 10
 const STAGE_4_DURATION = null; // e.g. '2m'
 
 // Stage 5: Ramp-down to 0 users
-const STAGE_5_TARGET = null;   // e.g. 0
+const STAGE_5_TARGET = 0;   // e.g. 0
 const STAGE_5_DURATION = null; // e.g. '1m'
 
 // ==============================================================================
