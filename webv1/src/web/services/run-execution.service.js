@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { syncRunToPostgres } from './run-db-sync.js';
 import {
   validatePerformanceScript,
   parseDurationToSeconds,
@@ -444,6 +445,7 @@ export function createRunExecutionService({ rootDir, reportsDir }) {
       currentRun.status = 'failed';
       currentRun.exitCode = -1;
       clearInterval(metricInterval);
+      syncRunToPostgres(folderName, reportsDir, currentRun.status, totalPlannedDurationSec).catch(() => {});
       broadcastSSE('complete', {
         status: 'failed',
         runId: currentRun.runId,

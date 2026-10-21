@@ -7,6 +7,7 @@ import { createCatalogRouter } from './routes/catalog.routes.js';
 import { createReportsRouter } from './routes/reports.routes.js';
 import { createRunRouter } from './routes/run.routes.js';
 import { createRunExecutionService } from './services/run-execution.service.js';
+import { initDatabase } from './services/db.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,8 @@ const runService = createRunExecutionService({
 app.use('/api', createCatalogRouter(DATA_DIR));
 app.use('/api', createReportsRouter(REPORTS_DIR));
 app.use('/api', createRunRouter(runService));
+
+initDatabase().catch(err => console.warn('[DB] Init warning:', err.message));
 
 app.listen(PORT, () => {
   console.log(`================================================================`);

@@ -1123,7 +1123,11 @@ export function loadSavedLayout(layoutId) {
     showToast('Saved layout not found.', 'error');
     return;
   }
-  applyScriptJsonToVisualState(target.data);
+  applyScriptJsonToVisualState(target.data, {}, { renderCatalogSelector, renderSelectedEndpointsConfig });
+  renderStages();
+  if (typeof window !== 'undefined' && typeof window.syncJsonFromVisualForm === 'function') {
+    window.syncJsonFromVisualForm();
+  }
   showToast(`Loaded layout "${target.name}".`, 'info');
 }
 
@@ -1306,7 +1310,7 @@ export async function openRecentRunsModal() {
             </div>
             <div class="text-xs text-slate-400 mt-1">${escapeHtml(r.testName)} · ${r.scenariosCount || 0} scenarios, ${r.totalSteps || 0} steps</div>
           </div>
-          <button onclick="applyScriptJsonToVisualState(${escapeHtml(JSON.stringify(r.scriptObj))}); document.getElementById('recent-runs-modal').remove();"
+          <button onclick="window.loadScenariosFromRecentLocalRun(${idx});"
             class="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow transition">
             ↻ Load Scenarios
           </button>
@@ -1357,7 +1361,11 @@ export async function loadScenariosFromRecentServerRun(scriptJsonUrl, runId) {
     const res = await fetch(scriptJsonUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const scriptObj = await res.json();
-    applyScriptJsonToVisualState(scriptObj);
+    applyScriptJsonToVisualState(scriptObj, {}, { renderCatalogSelector, renderSelectedEndpointsConfig });
+    renderStages();
+    if (typeof window !== 'undefined' && typeof window.syncJsonFromVisualForm === 'function') {
+      window.syncJsonFromVisualForm();
+    }
     const modal = document.getElementById('recent-runs-modal');
     if (modal) modal.remove();
     showToast(`Loaded scenarios from run ${runId}`, 'info');
@@ -1365,3 +1373,21 @@ export async function loadScenariosFromRecentServerRun(scriptJsonUrl, runId) {
     showToast(`Failed to load script for run ${runId}: ${err.message}`, 'error');
   }
 }
+
+window.loadScenariosFromRecentLocalRun = function(idx) {
+  try {
+    const list = getLocalRecentRuns();
+    const item = list[idx];
+    if (!item || !item.scriptObj) return;
+    applyScriptJsonToVisualState(item.scriptObj, {}, { renderCatalogSelector, renderSelectedEndpointsConfig });
+    renderStages();
+    if (typeof window !== 'undefined' && typeof window.syncJsonFromVisualForm === 'function') {
+      window.syncJsonFromVisualForm();
+    }
+    const modal = document.getElementById('recent-runs-modal');
+    if (modal) modal.remove();
+    showToast(`Loaded scenarios from run #${idx + 1}`, 'info');
+  } catch (err) {
+    showToast('Failed to load local run: ' + err.message, 'error');
+  }
+};

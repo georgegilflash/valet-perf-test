@@ -151,8 +151,18 @@ export const options = {
 
 /**
  * Helper to select an ID from the confirmed array of strings in step.data
+ * Supports cycling / repeating IDs seamlessly across VUs when VUs > available IDs.
  */
-function selectStepIdValue(step, vuNumber) {
+function selectStepIdValue(step, vuNumber, iterationContext) {
+  // If this step is chained and a kioskID was already determined in this iterationContext, reuse it
+  if (
+    (step.endpointId === 'callKioskGetTicket' || step.endpointId === 'callKioskCompleteTicket1') &&
+    iterationContext &&
+    iterationContext.kioskID
+  ) {
+    return iterationContext.kioskID;
+  }
+
   if (!step.data || typeof step.data !== 'object') return '';
   const list =
     step.data.locationIds ||
@@ -165,7 +175,8 @@ function selectStepIdValue(step, vuNumber) {
 
   if (!Array.isArray(list) || list.length === 0) return '';
 
-  if (step.data.selectionMode === 'per-vu') {
+  // For IssueTicket2 or per-vu selection mode, distribute across available IDs cycling modulo VU
+  if (step.data.selectionMode === 'per-vu' || step.endpointId === 'callKioskIssueTicket2') {
     const idx = Math.max(0, (vuNumber || 1) - 1) % list.length;
     return list[idx];
   }
@@ -192,7 +203,10 @@ export function setup() {
 function executeStep(step, stepOrder, scenarioObj, iterationContext = {}) {
   const epId = step.endpointId || step.id;
   const m = endpointMetricsRegistry[epId];
-  const selectedId = selectStepIdValue(step, __VU);
+  const selectedId = selectStepIdValue(step, __VU, iterationContext);
+  if (epId === 'callKioskIssueTicket2' && selectedId && iterationContext) {
+    iterationContext.kioskID = selectedId;
+  }
   const serviceUrl = step.service.startsWith('http')
     ? step.service
     : `${baseUrl}${step.service.startsWith('/') ? '' : '/'}${step.service}`;

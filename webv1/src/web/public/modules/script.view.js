@@ -341,7 +341,12 @@ export function applyScriptJsonToVisualState(scriptObj, options = {}, callbacks 
   if (!scriptObj || typeof scriptObj !== 'object') return false;
 
   const { silent = false, keepStages = false } = options;
-  const { renderCatalogSelector, renderSelectedEndpointsConfig } = callbacks;
+  const renderCatalogFn =
+    callbacks.renderCatalogSelector ||
+    (typeof window !== 'undefined' ? window.renderCatalogSelector : null);
+  const renderEndpointsFn =
+    callbacks.renderSelectedEndpointsConfig ||
+    (typeof window !== 'undefined' ? window.renderSelectedEndpointsConfig : null);
 
   const gc = scriptObj.globalConfig || {};
   if (gc.testName) {
@@ -450,8 +455,11 @@ export function applyScriptJsonToVisualState(scriptObj, options = {}, callbacks 
     state.activeScenarioId = state.scenarios[0]?.id || null;
   }
 
-  if (typeof renderCatalogSelector === 'function') renderCatalogSelector();
-  if (typeof renderSelectedEndpointsConfig === 'function') renderSelectedEndpointsConfig();
+  if (typeof renderCatalogFn === 'function') renderCatalogFn();
+  if (typeof renderEndpointsFn === 'function') renderEndpointsFn();
+  if (typeof window !== 'undefined' && typeof window.syncJsonFromVisualForm === 'function') {
+    window.syncJsonFromVisualForm();
+  }
 
   if (!silent) {
     showToast('Applied configuration to visual scenarios.', 'info');

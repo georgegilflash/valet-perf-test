@@ -143,6 +143,10 @@ function buildCommonStyles(statusColor) {
     .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: #0f172a; border: 1px solid #475569; color: #38bdf8; margin: 2px; font-family: monospace; }
     .code-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; color: #cbd5e1; overflow-x: auto; max-height: 360px; white-space: pre; }
     .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; }
+    .toggle-btn { background: #0f172a; color: #94a3b8; border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .toggle-btn:hover { background: #1e293b; color: #38bdf8; border-color: #0284c7; }
+    .collapsible-content { transition: max-height 0.25s ease-out; overflow: hidden; }
+    .collapsible-content.collapsed { display: none; }
   `;
 }
 
@@ -586,10 +590,28 @@ function renderEndpointHtml(scriptConfig, epMetrics, enabledEndpoints, runTimest
     </div>
 
     <div class="section">
-      <div class="section-title">🗂️ IDs & Specific Data Executed in this Run</div>
-      ${renderExecutedIdsAndTicketsHtml(epMetrics)}
+      <div class="section-title">
+        <span>🗂️ IDs & Specific Data Executed in this Run</span>
+        <button type="button" class="toggle-btn" onclick="toggleSection('executed-data-container', this)">Hide / Collapse</button>
+      </div>
+      <div id="executed-data-container" class="collapsible-content">
+        ${renderExecutedIdsAndTicketsHtml(epMetrics)}
+      </div>
     </div>
   </div>
+  <script>
+    function toggleSection(id, btn) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.classList.contains('collapsed')) {
+        el.classList.remove('collapsed');
+        if (btn) btn.textContent = 'Hide / Collapse';
+      } else {
+        el.classList.add('collapsed');
+        if (btn) btn.textContent = 'Show / Expand';
+      }
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -916,10 +938,26 @@ function renderGeneralHtml(scriptConfig, data, endpointMetricsList, runTimestamp
     <div class="section">
       <div class="section-title">
         <span>📜 Exact Executed Configuration (test-performance-script.json)</span>
+        <button type="button" class="toggle-btn" onclick="toggleSection('executed-cfg-container', this)">Hide / Collapse</button>
       </div>
-      <div class="code-box">${escapeHtml(JSON.stringify(scriptConfig, null, 2))}</div>
+      <div id="executed-cfg-container" class="collapsible-content">
+        <div class="code-box">${escapeHtml(JSON.stringify(scriptConfig, null, 2))}</div>
+      </div>
     </div>
   </div>
+  <script>
+    function toggleSection(id, btn) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.classList.contains('collapsed')) {
+        el.classList.remove('collapsed');
+        if (btn) btn.textContent = 'Hide / Collapse';
+      } else {
+        el.classList.add('collapsed');
+        if (btn) btn.textContent = 'Show / Expand';
+      }
+    }
+  </script>
 </body>
 </html>`;
 }
