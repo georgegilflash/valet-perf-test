@@ -2,7 +2,7 @@ import { check, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { callKioskGetKnownDrivers } from './src/scenarios/device-flow.js';
 import { generateSummary } from './src/utils/summary.js';
-import { validateKioskPool } from './src/utils/kiosks.js';
+import { validateKioskPool, loadedKioskIds } from './src/utils/kiosks.js';
 import { config } from './config/env.js';
 
 // ==============================================================================
@@ -13,15 +13,15 @@ const STAGE_1_TARGET = 5;   // e.g. 5
 const STAGE_1_DURATION = null; // e.g. '1m'
 
 // Stage 2: Ramp-up
-const STAGE_2_TARGET = 10;  // e.g. 10
+const STAGE_2_TARGET = 1;  // e.g. 10
 const STAGE_2_DURATION = null; // e.g. '2m'
 
 // Stage 3: Reach peak
-const STAGE_3_TARGET = 20;  // e.g. 20
+const STAGE_3_TARGET = 2;  // e.g. 20
 const STAGE_3_DURATION = null; // e.g. '3m'
 
 // Stage 4: Maintain steady state
-const STAGE_4_TARGET = 10;  // e.g. 10
+const STAGE_4_TARGET = 1;  // e.g. 10
 const STAGE_4_DURATION = null; // e.g. '2m'
 
 // Stage 5: Ramp-down to 0 users
@@ -51,6 +51,7 @@ const stages = [
 
 export const options = {
   stages: stages,
+  summaryTrendStats: ['min', 'avg', 'med', 'p(50)', 'p(90)', 'p(95)', 'p(99)', 'max', 'count'],
   thresholds: {
     http_req_duration: ['p(95)<5000', 'p(99)<10000'],
     http_req_failed: [`rate<${config.thresholds.maxErrorRate}`],
@@ -70,7 +71,7 @@ export function setup() {
   const maxRequiredVUs = Math.max(...stages.map((s) => s.target), 1);
   const kioskValidation = validateKioskPool(maxRequiredVUs);
 
-  // If kiosk-ids.json does not have enough Kiosk IDs for the required VUs, abort immediately!
+  // If kiosk-ids.json is missing or empty, abort immediately!
   if (!kioskValidation.valid) {
     console.error(`\n❌ ${kioskValidation.error}\n`);
     throw new Error(kioskValidation.error);
@@ -102,5 +103,13 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  return generateSummary(data, 'known-drivers');
+  return generateSummary(data, 'known-drivers', {
+    stages,
+    fromMin: resolvedFromMin,
+    fromMax: resolvedFromMax,
+    start: config.deviceSuite.knownDriversStart,
+    countMin: resolvedCountMin,
+    countMax: resolvedCountMax,
+    kioskPoolInfo: `${loadedKioskIds.length} Kiosk IDs loaded from kiosk-ids.json (Assigned per VU via (VU - 1) % ${loadedKioskIds.length || 1})`,
+  });
 }

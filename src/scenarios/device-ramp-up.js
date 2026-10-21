@@ -9,6 +9,7 @@ const p99Limit = hasLongPoll ? 75000 : 10000;
 
 export const deviceRampUpOptions = {
   stages: config.stages,
+  summaryTrendStats: ['min', 'avg', 'med', 'p(50)', 'p(90)', 'p(95)', 'p(99)', 'max', 'count'],
 
   thresholds: {
     http_req_duration: [

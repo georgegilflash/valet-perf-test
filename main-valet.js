@@ -37,6 +37,7 @@ const stages = [
 
 export const options = {
   stages: stages,
+  summaryTrendStats: ['min', 'avg', 'med', 'p(50)', 'p(90)', 'p(95)', 'p(99)', 'max', 'count'],
   thresholds: {
     http_req_duration: ['p(95)<2000', 'p(99)<5000'],
     http_req_failed: [`rate<${config.thresholds.maxErrorRate}`],
@@ -74,5 +75,5 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  return generateSummary(data, 'valet');
+  return generateSummary(data, 'valet', { stages, operationName: 'GetServerName' });
 }

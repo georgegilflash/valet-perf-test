@@ -20,12 +20,13 @@ export const loadedKioskIds = new SharedArray('kiosk_ids', function () {
 });
 
 /**
- * Validates whether there are sufficient unique Kiosk IDs for the required concurrent VUs.
+ * Validates whether the Kiosk ID pool in kiosk-ids.json is available for the required concurrent VUs.
  *
- * Rules (same as tokens):
- * - The number of Virtual Users must NOT exceed the number of Kiosk IDs in kiosk-ids.json.
- * - If kiosk-ids.json has fewer IDs than requiredVUs (or is empty), return invalid with detailed error.
- * - If kiosk-ids.json has >= requiredVUs: valid, and only the first requiredVUs will be used (1-to-1 per VU).
+ * Rules (aligned with web runner):
+ * - Uses all Kiosk IDs available in kiosk-ids.json.
+ * - If kiosk-ids.json is missing or empty, returns invalid with detailed error.
+ * - If kiosk-ids.json has fewer IDs than requiredVUs, it remains valid and reuses/cycles
+ *   the available Kiosk IDs across VUs via modulo ((VU - 1) % available).
  *
  * @param {number} requiredVUs - maximum concurrent users required across all stages
  * @returns {{ valid: boolean, error?: string, availableCount: number, requiredCount: number, message?: string }}
@@ -44,10 +45,10 @@ export function validateKioskPool(requiredVUs) {
 
   if (available < requiredVUs) {
     return {
-      valid: false,
+      valid: true,
       availableCount: available,
       requiredCount: requiredVUs,
-      error: `[KIOSK ID VALIDATION FAILED] Required ${requiredVUs} concurrent Virtual Users, but kiosk-ids.json only contains ${available} Kiosk IDs! Virtual users cannot exceed available Kiosk IDs. Run 'npm run kiosks -- ${requiredVUs}' to export sufficient Kiosk IDs.`,
+      message: `Kiosk ID pool ready: Using all ${available} Kiosk IDs from kiosk-ids.json and reusing/cycling across ${requiredVUs} VUs ((VU - 1) % ${available}).`,
     };
   }
 
@@ -55,13 +56,14 @@ export function validateKioskPool(requiredVUs) {
     valid: true,
     availableCount: available,
     requiredCount: requiredVUs,
-    message: `Kiosk ID validation passed: Using first ${requiredVUs} Kiosk IDs out of ${available} available in kiosk-ids.json.`,
+    message: `Kiosk ID pool ready: ${available} Kiosk IDs loaded from kiosk-ids.json (distributing across ${requiredVUs} max VUs).`,
   };
 }
 
 /**
- * Retrieves the unique Kiosk ID assigned to the current Virtual User (VU).
+ * Retrieves the Kiosk ID assigned to the current Virtual User (VU).
  * VU IDs in k6 are 1-indexed (VU 1 -> index 0, VU 2 -> index 1, etc.).
+ * If the number of VUs exceeds the pool size, wraps around using modulo to reuse Kiosk IDs.
  *
  * @param {number} vuId - __VU (1-indexed)
  * @param {string} fallbackKioskId - fallback Kiosk ID from config/env
@@ -69,10 +71,8 @@ export function validateKioskPool(requiredVUs) {
  */
 export function getVuKioskId(vuId, fallbackKioskId) {
   if (loadedKioskIds.length > 0) {
-    const index = (vuId && vuId > 0) ? vuId - 1 : 0;
-    if (index >= 0 && index < loadedKioskIds.length) {
-      return loadedKioskIds[index];
-    }
+    const index = Math.max(0, (vuId || 1) - 1) % loadedKioskIds.length;
+    return loadedKioskIds[index];
   }
   return fallbackKioskId;
 }

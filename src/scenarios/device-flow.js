@@ -139,7 +139,7 @@ export function callKioskGetKnownDrivers(customParams = {}) {
    <soap:Body>
       <web:GetKnownDrivers>
          <web:kioskID>${kioskId}</web:kioskID>
-         <web:from>2026-08-27T00:00:00</web:from>
+         <web:from>${fromDate}</web:from>
          <web:start>${start}</web:start>
          <web:count>${count}</web:count>
       </web:GetKnownDrivers>

@@ -4,7 +4,7 @@
 #>
 param (
     [string]$BaseUrl = "https://intserver.qa3.flashparking.dev",
-    [string]$KioskID = "4b51d86b-e14b-4da5-b7c0-c1a20ca3f660",
+    [string]$KioskID = "",
     [string]$FromDate = "2026-08-27T00:00:00",
     [int]$Start = 1,
     [int]$Count = 2,

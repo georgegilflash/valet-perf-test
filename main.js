@@ -96,5 +96,5 @@ export function teardown(data) {
  * Custom summary reporting (terminal summary + reports/summary.json)
  */
 export function handleSummary(data) {
-  return generateSummary(data, 'valet');
+  return generateSummary(data, 'valet', { stages });
 }
