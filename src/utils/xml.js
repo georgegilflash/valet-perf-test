@@ -19,6 +19,77 @@ export function extractXmlValue(xmlString, tagName) {
 }
 
 /**
+ * Extracts all occurrences of an XML element's inner content, ignoring namespace prefixes.
+ *
+ * @param {string} xmlString - raw XML response body
+ * @param {string} tagName - tag name to extract (e.g. 'KnownDriver', 'DateModifiedUtc', 'DatabaseChange')
+ * @returns {string[]} array of inner content strings
+ */
+export function extractAllXmlValues(xmlString, tagName) {
+  if (!xmlString || typeof xmlString !== 'string') return [];
+  const regex = new RegExp(`<(?:[\\w-]+:)?${tagName}(?:\\s+[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?${tagName}>`, 'gi');
+  const results = [];
+  let match;
+  while ((match = regex.exec(xmlString)) !== null) {
+    results.push(match[1].trim());
+  }
+  return results;
+}
+
+/**
+ * Pretty-prints an XML string with indentation so single-line SOAP responses are easy to read in the console.
+ *
+ * @param {string} xmlString - raw XML string
+ * @param {string} [indent='  '] - indentation string per level
+ * @returns {string} formatted multi-line XML string
+ */
+export function formatXml(xmlString, indent = '  ') {
+  if (!xmlString || typeof xmlString !== 'string') return '(empty)';
+  const trimmed = xmlString.trim();
+  if (!trimmed.startsWith('<')) return trimmed;
+
+  // Insert newline between adjacent tags
+  const normalized = trimmed.replace(/>\s*</g, '>\n<');
+  const lines = normalized.split(/\r?\n/);
+  let padLevel = 0;
+  const formattedLines = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // Closing tag only: </tag>
+    if (/^<\/[^>]+>$/.test(line)) {
+      padLevel = Math.max(0, padLevel - 1);
+      formattedLines.push(indent.repeat(padLevel) + line);
+    }
+    // XML declaration <?xml ...?> or <!DOCTYPE / <!-- comment -->
+    else if (/^<\?[\s\S]*\?>$/.test(line) || /^<![\s\S]*>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    }
+    // Self-closing tag: <tag ... />
+    else if (/^<[^>]+\/>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    }
+    // Single-line element containing both opening and closing tag: <tag>value</tag>
+    else if (/^<([^\s/>]+)[^>]*>[\s\S]*<\/\1>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    }
+    // Opening tag: <tag ...>
+    else if (/^<[^/!?][^>]*>$/.test(line)) {
+      formattedLines.push(indent.repeat(padLevel) + line);
+      padLevel++;
+    }
+    // Fallback text content
+    else {
+      formattedLines.push(indent.repeat(padLevel) + line);
+    }
+  }
+
+  return formattedLines.join('\n');
+}
+
+/**
  * Checks whether an XML response contains a <soap:Fault> or <Fault> element
  * @param {string} xmlString
  * @returns {boolean}

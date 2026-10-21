@@ -15,9 +15,10 @@ if ! command -v k6 &> /dev/null; then
     exit 1
 fi
 
-mkdir -p reports
+mkdir -p reports/known-drivers reports/known-driver-changes reports/kiosk reports/valet reports/pms reports/sign reports/payments reports/polling reports/device
 
-ENV_ARGS=()
+RUN_TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+ENV_ARGS=("-e" "RUN_TIMESTAMP=$RUN_TIMESTAMP")
 if [ -f "$ENV_FILE" ]; then
     echo -e "\033[32mLoading environment variables from $ENV_FILE...\033[0m"
     while IFS= read -r line || [ -n "$line" ]; do

@@ -2,7 +2,7 @@
 .SYNOPSIS
     Runs the k6 performance test with environment variables loaded from .env
 .DESCRIPTION
-    Loads key=value pairs from the .env file (if present) and passes them to k6 run.
+    Loads key=value pairs from the .env file (if present), ensures per-endpoint report directories exist, and passes them to k6 run.
 .EXAMPLE
     .\scripts\run.ps1
     .\scripts\run.ps1 -Script "main.js" -EnvFile ".env"
@@ -27,13 +27,33 @@ if (-not $k6Cmd) {
     exit 1
 }
 
-# Create reports directory if it doesn't exist
-if (-not (Test-Path "reports")) {
-    New-Item -ItemType Directory -Path "reports" | Out-Null
+# Create reports root directory and per-endpoint report subdirectories
+$endpointDirs = @(
+    "reports",
+    "reports/known-drivers",
+    "reports/known-driver-changes",
+    "reports/kiosk",
+    "reports/valet",
+    "reports/pms",
+    "reports/sign",
+    "reports/payments",
+    "reports/polling",
+    "reports/device"
+)
+
+foreach ($dir in $endpointDirs) {
+    if (-not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force -ErrorAction SilentlyContinue | Out-Null
+    }
 }
 
+# Generate run timestamp (YYYY-MM-DD_HH-mm-ss) so each report has a unique filename with date & time
+$runTimestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+
 # Collect environment variable arguments
-$envArgs = @()
+$envArgs = @(
+    "-e", "RUN_TIMESTAMP=$runTimestamp"
+)
 
 # If .env file exists, read it line by line
 if (Test-Path $EnvFile) {

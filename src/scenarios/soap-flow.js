@@ -6,7 +6,8 @@ import {
   buildSoap12Envelope, 
   buildWsSecurityHeader, 
   extractXmlValue, 
-  isSoapFault 
+  isSoapFault,
+  formatXml
 } from '../utils/xml.js';
 import { getVuToken } from '../utils/tokens.js';
 import { config } from '../../config/env.js';
@@ -70,16 +71,17 @@ export function executeSoapFlow(customToken = null) {
     const durationSec = (res.timings.duration / 1000).toFixed(2);
 
     // Real-time console log for execution feedback
-    if (isSuccess) {
-      console.log(`[VU ${__VU}] OK (Status 200) in ${durationSec}s | Token: ${token.substring(0, 8)}...`);
-    } else {
+    if (!isSuccess) {
       console.log(`[VU ${__VU}] FAILED (Status ${res.status}) in ${durationSec}s | Token: ${token.substring(0, 8)}... | Error: ${res.error || (hasFault ? 'SOAP Fault' : 'Non-200')} | Code: ${res.error_code}`);
-    }
+    } 
+    // else {
+    //   console.log(`[VU ${__VU}] OK (Status 200) in ${durationSec}s | Token: ${token.substring(0, 8)}...`);
+    // }
 
     // Print full response body if DEBUG_RESPONSE=true or if request failed
     if (config.debugResponse || !isSuccess) {
       console.log(`\n---------------- [VU ${__VU}] RESPONSE BODY (HTTP ${res.status}) ----------------`);
-      console.log(res.body || '(empty body)');
+      console.log(formatXml(res.body));
       console.log(`----------------------------------------------------------------------\n`);
     }
 

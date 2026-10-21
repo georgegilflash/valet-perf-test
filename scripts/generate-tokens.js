@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 // Default source and destination files
-const SOURCE_TXT = path.join(rootDir, 'login-token-QA1.txt');
+const SOURCE_TXT = path.join(rootDir, 'login-token-QA3.txt');
 const DEST_JSON = path.join(rootDir, 'tokens.json');
 
 function generateTokens() {

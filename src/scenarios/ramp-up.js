@@ -11,6 +11,7 @@ import { config } from '../../config/env.js';
  */
 export const rampUpOptions = {
   stages: config.stages,
+  summaryTrendStats: ['min', 'avg', 'med', 'p(50)', 'p(90)', 'p(95)', 'p(99)', 'max', 'count'],
 
   thresholds: {
     // 95% of all HTTP requests must complete within SLA (default 500ms)

@@ -1,0 +1,5 @@
+node_modules
+reports/*
+!reports/.gitkeep
+npm-debug.log
+.DS_Store

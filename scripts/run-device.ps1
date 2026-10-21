@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
-    Runs the Device Services performance test suite (Kiosk Ping, GetServerName, PMS, Sign)
+    Runs the Device Services performance test suite (Kiosk, KnownDrivers, KnownDriverChanges, PMS, Sign, Payments)
 .DESCRIPTION
-    Loads key=value pairs from the .env file and executes k6 with main-device.js.
+    Loads key=value pairs from the .env file, ensures per-endpoint report directories exist, and executes k6.
 .EXAMPLE
     .\scripts\run-device.ps1
+    .\scripts\run-device.ps1 -Script "main-known-drivers.js"
     .\scripts\run-device.ps1 -AdditionalArgs "-e DEBUG_RESPONSE=true"
 #>
 
@@ -29,13 +30,40 @@ if (-not $k6Cmd) {
     exit 1
 }
 
-# Create reports directory if it doesn't exist
-if (-not (Test-Path "reports")) {
-    New-Item -ItemType Directory -Path "reports" | Out-Null
+# Create reports root directory and per-endpoint report subdirectories
+$endpointDirs = @(
+    "reports",
+    "reports/known-drivers",
+    "reports/known-driver-changes",
+    "reports/kiosk",
+    "reports/valet",
+    "reports/pms",
+    "reports/sign",
+    "reports/payments",
+    "reports/polling",
+    "reports/device"
+)
+
+# Also derive endpoint folder name from $Script (e.g. main-known-drivers.js -> known-drivers)
+$scriptBase = [System.IO.Path]::GetFileNameWithoutExtension($Script)
+if ($scriptBase -match "^main-(.+)$") {
+    $derivedSuite = $Matches[1].ToLower()
+    $endpointDirs += "reports/$derivedSuite"
 }
 
+foreach ($dir in $endpointDirs) {
+    if (-not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+}
+
+# Generate run timestamp (YYYY-MM-DD_HH-mm-ss) so each report has a unique filename with date & time
+$runTimestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+
 # Collect environment variable arguments
-$envArgs = @()
+$envArgs = @(
+    "-e", "RUN_TIMESTAMP=$runTimestamp"
+)
 
 if (Test-Path $EnvFile) {
     Write-Host "Loading environment from $EnvFile..." -ForegroundColor Green

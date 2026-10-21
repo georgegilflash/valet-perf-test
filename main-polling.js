@@ -77,6 +77,7 @@ if (Object.keys(activeScenarios).length === 0) {
 
 export const options = {
   scenarios: activeScenarios,
+  summaryTrendStats: ['min', 'avg', 'med', 'p(50)', 'p(90)', 'p(95)', 'p(99)', 'max', 'count'],
   thresholds: {
     http_req_duration: ['p(95)<75000', 'p(99)<90000'],
     http_req_failed: [`rate<${config.thresholds.maxErrorRate}`],
@@ -136,5 +137,5 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  return generateSummary(data, 'polling');
+  return generateSummary(data, 'polling', { stages });
 }
